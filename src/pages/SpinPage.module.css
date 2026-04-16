@@ -1,0 +1,173 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-bg-primary);
+  padding: 12px 16px 24px;
+  gap: 16px;
+}
+
+.balanceBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-surface);
+  border-radius: var(--radius-md);
+  padding: 12px 24px;
+  gap: 32px;
+}
+
+.balanceItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.balanceLabel {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.balanceValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.divider {
+  width: 1px;
+  height: 32px;
+  background: var(--color-bg-elevated);
+}
+
+.wheelWrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stakeRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stakeLabel {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.stakeOptions {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+
+.stakeBtn {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+
+.stakeActive {
+  background: var(--color-accent-purple);
+  color: #ffffff;
+}
+
+.spinBtn {
+  width: 100%;
+  padding: 16px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--color-accent-purple), var(--color-accent-pink));
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  box-shadow: 0 4px 24px rgba(108, 61, 232, 0.4);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.spinBtn:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 12px rgba(108, 61, 232, 0.3);
+}
+
+.spinningText {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 15px;
+  padding: 16px;
+}
+
+.error {
+  text-align: center;
+  color: var(--color-error);
+  font-size: 13px;
+}
+
+.result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  background: var(--color-bg-surface);
+  border-radius: var(--radius-lg);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.resultLabel {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.resultValue {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--color-accent-gold);
+}
+
+.resultCash {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-success);
+}
+
+.resultSub {
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.playAgainBtn {
+  margin-top: 8px;
+  padding: 12px 32px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--color-accent-purple), var(--color-accent-pink));
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+}

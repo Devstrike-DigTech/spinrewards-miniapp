@@ -1,0 +1,27 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.content {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.errorScreen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px;
+}
+
+.errorText {
+  text-align: center;
+  color: var(--color-error);
+  font-size: 15px;
+  line-height: 1.5;
+}

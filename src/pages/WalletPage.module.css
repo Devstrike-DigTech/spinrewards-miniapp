@@ -1,0 +1,163 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  padding: 20px 16px 32px;
+  gap: 16px;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-bg-elevated);
+  border-top-color: var(--color-accent-purple);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--color-bg-surface);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+.cardCash {
+  background: linear-gradient(135deg, #1a0a3e, #2a0a2a);
+  border: 1px solid var(--color-accent-purple);
+}
+
+.cardLabel {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cardValue {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.cardSub {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.kycBanner {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kycText {
+  font-size: 13px;
+  color: var(--color-warning);
+}
+
+.kycBtn {
+  align-self: flex-start;
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  background: var(--color-warning);
+  color: #0a0a1a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.withdrawBtn {
+  width: 100%;
+  padding: 14px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--color-accent-purple), var(--color-accent-pink));
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.empty {
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.record {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--color-bg-surface);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+
+.recordAmount {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.recordDate {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status_pending { background: #2a2a0a; color: var(--color-warning); }
+.status_processing { background: #0a1a2a; color: #3d9de8; }
+.status_completed { background: #0a2a12; color: var(--color-success); }
+.status_failed { background: #2a0a0a; color: var(--color-error); }

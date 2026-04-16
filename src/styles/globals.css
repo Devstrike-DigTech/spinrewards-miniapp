@@ -1,0 +1,96 @@
+/* Design tokens — update these when UI design is finalised */
+:root {
+  --color-bg-primary: #0a0a1a;
+  --color-bg-surface: #12122a;
+  --color-bg-elevated: #1a1a3e;
+
+  --color-accent-purple: #6c3de8;
+  --color-accent-pink: #e83d8a;
+  --color-accent-teal: #3de8c4;
+  --color-accent-gold: #e8c93d;
+
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a0a0c0;
+  --color-text-muted: #60607a;
+
+  --color-success: #3de88a;
+  --color-error: #e83d3d;
+  --color-warning: #e8c93d;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+
+  --font-sans: system-ui, -apple-system, sans-serif;
+
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent overscroll bounce in Telegram WebView */
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+  background: none;
+  font-family: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Scrollable areas */
+.scroll-y {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Utility classes */
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-accent-purple), var(--color-accent-pink));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
