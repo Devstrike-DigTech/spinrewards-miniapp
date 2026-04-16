@@ -5,7 +5,6 @@ import { spin as spinApi, wallet } from '@/api/endpoints'
 import { useWalletStore } from '@/store/walletStore'
 import { useTelegram } from '@/hooks/useTelegram'
 import { useAuthStore } from '@/store/authStore'
-import type { RTPTier } from '@/types'
 import styles from './SpinPage.module.css'
 
 type SpinState = 'idle' | 'spinning' | 'result'
@@ -18,7 +17,6 @@ export function SpinPage() {
 
   const [spinState, setSpinState] = useState<SpinState>('idle')
   const [stake, setStake] = useState(100)
-  const [tiers, setTiers] = useState<RTPTier[]>([])
   const [segments, setSegments] = useState<WheelSegment[]>([])
   const [lastResult, setLastResult] = useState<{
     label: string
@@ -31,7 +29,6 @@ export function SpinPage() {
   // Fetch RTP tiers to build wheel segments
   useEffect(() => {
     spinApi.tiers().then((data) => {
-      setTiers(data)
       if (data.length > 0) {
         const activeTier = data[0]
         const mapped: WheelSegment[] = activeTier.outcomes.map((o) => ({
