@@ -33,6 +33,9 @@ export class SpinEngine {
   private currentRotation = 0
   private isSpinning = false
   private onSpinComplete?: (segmentIndex: number) => void
+  // Guards against destroy() being called before or during async init()
+  private initialized = false
+  private destroyed = false
 
   constructor(options: SpinEngineOptions) {
     this.segments = options.segments
@@ -53,6 +56,14 @@ export class SpinEngine {
       autoDensity: true,
     })
 
+    // Component may have unmounted while we were awaiting PixiJS init.
+    // Destroy the now-fully-initialized app and bail out cleanly.
+    if (this.destroyed) {
+      this.app.destroy(true)
+      return
+    }
+
+    this.initialized = true
     this.app.stage.addChild(this.wheelContainer)
     this.wheelContainer.x = this.app.screen.width / 2
     this.wheelContainer.y = this.app.screen.height / 2
@@ -148,7 +159,7 @@ export class SpinEngine {
    * The segment index maps to the outcome returned by the API.
    */
   spinTo(targetSegmentIndex: number) {
-    if (this.isSpinning) return
+    if (!this.initialized || this.isSpinning) return
     this.isSpinning = true
 
     const segmentAngle = 360 / this.segments.length
@@ -175,12 +186,14 @@ export class SpinEngine {
   }
 
   updateSegments(segments: WheelSegment[]) {
+    if (!this.initialized) return
     this.segments = segments
     this.drawWheel()
     this.drawPointer()
   }
 
   resize(width: number, height: number) {
+    if (!this.initialized) return
     this.app.renderer.resize(width, height)
     this.wheelContainer.x = width / 2
     this.wheelContainer.y = height / 2
@@ -189,6 +202,13 @@ export class SpinEngine {
   }
 
   destroy() {
-    this.app.destroy()
+    this.destroyed = true
+    // If init() completed normally, destroy the PixiJS app.
+    // If init() is still in-flight, it will see this.destroyed and call
+    // app.destroy() itself once the await resolves.
+    if (this.initialized) {
+      this.app.destroy(true)
+      this.initialized = false
+    }
   }
 }

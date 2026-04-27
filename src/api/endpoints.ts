@@ -18,14 +18,25 @@ import type {
 export const auth = {
   telegram: (initData: string): Promise<AuthResponse> =>
     publicClient
-      .post<AuthResponse>('/auth/telegram/', { init_data: initData })
-      .then((r) => r.data),
+      .post('/auth/telegram/', { init_data: initData })
+      .then((r) => {
+        // Backend wraps response in { data: { ... } } — unwrap if present
+        const raw = r.data?.data ?? r.data
+        // Backend uses access_token/refresh_token — normalise to access/refresh
+        return {
+          user: raw.user,
+          tokens: {
+            access: raw.access_token ?? raw.access,
+            refresh: raw.refresh_token ?? raw.refresh,
+          },
+        } satisfies AuthResponse
+      }),
 }
 
 // User
 export const users = {
   me: (): Promise<User> =>
-    apiClient.get<User>('/users/me/').then((r) => r.data),
+    apiClient.get('/users/me/').then((r) => r.data?.data ?? r.data),
 }
 
 // Wallet

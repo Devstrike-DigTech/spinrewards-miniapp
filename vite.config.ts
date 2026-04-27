@@ -12,6 +12,7 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    allowedHosts: ['localhost', '127.0.0.1', '.local', 'fatigued-nonleprous-hue.ngrok-free.dev', 'plastery-unhampered-erline.ngrok-free.dev'],
   },
   build: {
     target: 'es2020',

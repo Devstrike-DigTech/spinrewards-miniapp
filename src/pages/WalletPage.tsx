@@ -9,16 +9,41 @@ export function WalletPage() {
   const [history, setHistory] = useState<WithdrawalRecord[]>([])
   const [kycStatus, setKycStatus] = useState<KYCStatus | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([
+    // Use allSettled so one failing endpoint doesn't blank the whole page.
+    // Each result is { status: 'fulfilled', value } or { status: 'rejected', reason }
+    Promise.allSettled([
       wallet.balance(),
       withdrawals.list(),
       kyc.status(),
-    ]).then(([balance, withdrawalList, kycData]) => {
-      setBalance(balance.coin_balance, balance.cash_balance)
-      setHistory(withdrawalList)
-      setKycStatus(kycData)
+    ]).then(([balanceResult, withdrawalResult, kycResult]) => {
+      if (balanceResult.status === 'fulfilled') {
+        setBalance(balanceResult.value.coin_balance, balanceResult.value.cash_balance)
+      } else {
+        console.error('[Wallet] balance failed:', balanceResult.reason)
+      }
+
+      if (withdrawalResult.status === 'fulfilled') {
+        setHistory(withdrawalResult.value)
+      } else {
+        console.error('[Wallet] withdrawals failed:', withdrawalResult.reason)
+      }
+
+      if (kycResult.status === 'fulfilled') {
+        setKycStatus(kycResult.value)
+      } else {
+        console.error('[Wallet] KYC failed:', kycResult.reason)
+      }
+
+      // If all three failed, surface an error instead of a blank page
+      const allFailed = [balanceResult, withdrawalResult, kycResult].every(
+        (r) => r.status === 'rejected'
+      )
+      if (allFailed) {
+        setLoadError('Could not load wallet data. Check your connection and try again.')
+      }
     }).finally(() => setIsLoading(false))
   }, [setBalance])
 
@@ -26,6 +51,15 @@ export function WalletPage() {
     return (
       <div className={styles.loading}>
         <div className={styles.spinner} />
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className={styles.page}>
+        <h1 className={styles.title}>Wallet</h1>
+        <p style={{ color: '#e83d3d', padding: '1rem', textAlign: 'center' }}>{loadError}</p>
       </div>
     )
   }
