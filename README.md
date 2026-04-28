@@ -169,5 +169,5 @@ See [`docs/environment-variables.md`](docs/environment-variables.md).
 npm run dev        # Start dev server on port 5173
 npm run build      # Type-check + compile to dist/
 npm run preview    # Preview production build locally
-npm run typecheck  # Type-check without building
+npm run typecheck  # Type-check without building 
 ```
