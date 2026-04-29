@@ -36,23 +36,34 @@ export function useAuth() {
         // after WebApp.ready() is called. Poll for up to 1 second so we don't
         // read it before Telegram has had a chance to inject it.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const tgWebApp = () => (window as any).Telegram?.WebApp
-        let liveInitData = tgWebApp()?.initData as string | undefined
-        if (!liveInitData) {
-          for (let i = 0; i < 10; i++) {
-            await new Promise((r) => setTimeout(r, 100))
-            if (cancelled) return
-            liveInitData = tgWebApp()?.initData as string | undefined
-            if (liveInitData) break
-          }
-        }
+       const getInitData = async (): Promise<string | undefined> => {
+  const tg = (window as any).Telegram?.WebApp;
+
+  if (tg) {
+    // Notify Telegram the app is ready
+    tg.ready();
+    
+    // If data is already there, return it
+    if (tg.initData) return tg.initData;
+  }
+
+  // Fallback: If you still need a slight wait for async script injection
+  for (let i = 0; i < 10; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+    const liveData = (window as any).Telegram?.WebApp?.initData;
+    if (liveData) return liveData;
+  }
+
+  return undefined;
+};
+
 
         const devInitData = import.meta.env.DEV
           ? (import.meta.env.VITE_DEV_INIT_DATA as string | undefined)
           : undefined
-        const activeInitData = liveInitData || devInitData
+        const activeInitData = await getInitData() || devInitData
 
-        console.log('[Auth] initData present:', !!liveInitData, '| length:', liveInitData?.length ?? 0)
+        console.log('[Auth] initData present:', !!activeInitData, '| length:', activeInitData?.length ?? 0)
 
         if (!activeInitData) {
           if (!cancelled) {
@@ -62,7 +73,7 @@ export function useAuth() {
           return
         }
 
-        if (!liveInitData && devInitData) {
+        if (!getInitData() && devInitData) {
           console.warn('[Auth] Using VITE_DEV_INIT_DATA — dev only')
         }
 
