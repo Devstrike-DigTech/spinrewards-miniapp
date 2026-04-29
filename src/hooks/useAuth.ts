@@ -16,6 +16,22 @@ export function useAuth() {
     let cancelled = false
 
     async function authenticate() {
+      // Diagnostic: dump full WebApp state before any polling
+      const tgDebug = (window as any).Telegram?.WebApp
+      console.log('[Auth] WebApp diagnostic:', JSON.stringify({
+        hasTelegram: !!(window as any).Telegram,
+        hasWebApp: !!tgDebug,
+        version: tgDebug?.version,
+        platform: tgDebug?.platform,
+        initData: tgDebug?.initData,
+        initDataLength: tgDebug?.initData?.length,
+        initDataUnsafe: tgDebug?.initDataUnsafe,
+        hasProxy: !!(window as any).TelegramWebviewProxy,
+        locationHash: window.location.hash?.slice(0, 200),
+        locationSearch: window.location.search?.slice(0, 200),
+        referrer: document.referrer?.slice(0, 100),
+      }))
+
       try {
         // If we have a stored token, try to fetch the user profile directly
         if (tokens?.access) {
@@ -73,7 +89,7 @@ export function useAuth() {
           return
         }
 
-        if (!getInitData() && devInitData) {
+        if (!activeInitData && devInitData) {
           console.warn('[Auth] Using VITE_DEV_INIT_DATA — dev only')
         }
 
