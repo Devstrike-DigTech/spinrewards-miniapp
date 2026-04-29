@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import WebApp from '@twa-dev/sdk'
 import { auth, users } from '@/api/endpoints'
 import { useAuthStore } from '@/store/authStore'
 import { useTelegram } from './useTelegram'
@@ -33,14 +32,19 @@ export function useAuth() {
           }
         }
 
-        // Read initData inside the effect so we always get the live value
-        // from window.Telegram.WebApp, not a render-time snapshot that may
-        // have been captured before Telegram's script finished injecting it.
-        const activeInitData =
-          WebApp.initData ||
-          (import.meta.env.DEV
-            ? (import.meta.env.VITE_DEV_INIT_DATA as string | undefined)
-            : undefined)
+        // Read initData directly from window.Telegram.WebApp inside the effect.
+        // The @twa-dev/sdk captures its reference at module load time, which
+        // on some native Telegram versions is before the bridge has populated
+        // initData. Reading the global directly at effect-time guarantees we
+        // get the live value.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const liveInitData = (window as any).Telegram?.WebApp?.initData as string | undefined
+        const devInitData = import.meta.env.DEV
+          ? (import.meta.env.VITE_DEV_INIT_DATA as string | undefined)
+          : undefined
+        const activeInitData = liveInitData || devInitData
+
+        console.log('[Auth] initData present:', !!liveInitData, '| length:', liveInitData?.length ?? 0)
 
         if (!activeInitData) {
           if (!cancelled) {
@@ -50,7 +54,7 @@ export function useAuth() {
           return
         }
 
-        if (!WebApp.initData && activeInitData) {
+        if (!liveInitData && devInitData) {
           console.warn('[Auth] Using VITE_DEV_INIT_DATA — dev only')
         }
 
