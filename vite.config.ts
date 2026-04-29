@@ -12,6 +12,8 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // Allow any host in dev — covers ngrok tunnels, custom domains, LAN testing
+    allowedHosts: 'all',
   },
   build: {
     target: 'es2020',

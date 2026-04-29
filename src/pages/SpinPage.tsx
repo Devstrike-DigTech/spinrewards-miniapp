@@ -16,7 +16,7 @@ export function SpinPage() {
   const { coinBalance, cashBalance, setBalance } = useWalletStore()
 
   const [spinState, setSpinState] = useState<SpinState>('idle')
-  const [stake, setStake] = useState(100)
+  const [stake, setStake] = useState(200)
   const [segments, setSegments] = useState<WheelSegment[]>([])
   const [lastResult, setLastResult] = useState<{
     label: string
