@@ -4,9 +4,12 @@ import WebApp from '@twa-dev/sdk'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const tg = () => (window as any).Telegram?.WebApp
 
+// Signal readiness immediately at module load — the sooner Telegram receives
+// this, the sooner it sends back initData via postMessage.
+WebApp.ready()
+
 export function useTelegram() {
   useEffect(() => {
-    WebApp.ready()
     WebApp.expand()
     WebApp.lockOrientation?.()
   }, [])
