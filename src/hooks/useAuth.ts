@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import WebApp from '@twa-dev/sdk'
 import { auth, users } from '@/api/endpoints'
 import { useAuthStore } from '@/store/authStore'
 import { useTelegram } from './useTelegram'
@@ -6,7 +7,7 @@ import { useTelegram } from './useTelegram'
 export function useAuth() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { initData } = useTelegram()
+  useTelegram() // still call it so WebApp.ready() / WebApp.expand() fires
   const { setAuth, setTokens, clearAuth, isAuthenticated, tokens, user } =
     useAuthStore()
 
@@ -32,12 +33,14 @@ export function useAuth() {
           }
         }
 
-        // Authenticate with Telegram initData
-        const activeInitData = initData || (
-          import.meta.env.DEV
+        // Read initData inside the effect so we always get the live value
+        // from window.Telegram.WebApp, not a render-time snapshot that may
+        // have been captured before Telegram's script finished injecting it.
+        const activeInitData =
+          WebApp.initData ||
+          (import.meta.env.DEV
             ? (import.meta.env.VITE_DEV_INIT_DATA as string | undefined)
-            : undefined
-        )
+            : undefined)
 
         if (!activeInitData) {
           if (!cancelled) {
@@ -47,7 +50,7 @@ export function useAuth() {
           return
         }
 
-        if (!initData && activeInitData) {
+        if (!WebApp.initData && activeInitData) {
           console.warn('[Auth] Using VITE_DEV_INIT_DATA — dev only')
         }
 
