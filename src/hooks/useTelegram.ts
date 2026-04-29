@@ -1,18 +1,22 @@
 import { useEffect } from 'react'
 import WebApp from '@twa-dev/sdk'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const tg = () => (window as any).Telegram?.WebApp
+
 export function useTelegram() {
   useEffect(() => {
     WebApp.ready()
     WebApp.expand()
-    // Lock orientation to portrait
     WebApp.lockOrientation?.()
   }, [])
 
   return {
     webApp: WebApp,
-    user: WebApp.initDataUnsafe?.user,
-    initData: WebApp.initData,
+    // Read directly from window.Telegram.WebApp at call time — the SDK's
+    // module-level reference can be stale on some native Telegram versions.
+    user: tg()?.initDataUnsafe?.user,
+    initData: tg()?.initData as string | undefined,
     colorScheme: WebApp.colorScheme,
     themeParams: WebApp.themeParams,
     haptic: WebApp.HapticFeedback,
