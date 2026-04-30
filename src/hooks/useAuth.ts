@@ -27,7 +27,8 @@ export function useAuth() {
         initDataLength: tgDebug?.initData?.length,
         initDataUnsafe: tgDebug?.initDataUnsafe,
         hasProxy: !!(window as any).TelegramWebviewProxy,
-        locationHash: window.location.hash?.slice(0, 200),
+        hashLength: window.location.hash?.length,
+        hasTgWebAppData: window.location.hash?.includes('tgWebAppData'),
         locationSearch: window.location.search?.slice(0, 200),
         referrer: document.referrer?.slice(0, 100),
       }))
