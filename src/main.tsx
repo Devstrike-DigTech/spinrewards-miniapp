@@ -16,7 +16,9 @@ import './styles/globals.css'
     initDataLength: tg?.initData?.length,
     initData: tg?.initData?.slice(0, 100),
     hasProxy: !!(window as any).TelegramWebviewProxy,
-    hash: window.location.hash?.slice(0, 200),
+    hashLength: window.location.hash?.length,
+    hash: window.location.hash,
+    hasTgWebAppData: window.location.hash?.includes('tgWebAppData'),
   }))
 }
 
