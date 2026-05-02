@@ -5,7 +5,7 @@ import type { WithdrawalRecord, KYCStatus } from '@/types'
 import styles from './WalletPage.module.css'
 
 export function WalletPage() {
-  const { coinBalance, cashBalance, setBalance } = useWalletStore()
+  const { coinBalance, cashBalance, stakedBalance, setBalance } = useWalletStore()
   const [history, setHistory] = useState<WithdrawalRecord[]>([])
   const [kycStatus, setKycStatus] = useState<KYCStatus | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -20,7 +20,8 @@ export function WalletPage() {
       kyc.status(),
     ]).then(([balanceResult, withdrawalResult, kycResult]) => {
       if (balanceResult.status === 'fulfilled') {
-        setBalance(balanceResult.value.coin_balance, balanceResult.value.cash_balance)
+        const b = balanceResult.value
+        setBalance(b.coin_balance, b.cash_balance, b.staked_balance)
       } else {
         console.error('[Wallet] balance failed:', balanceResult.reason)
       }
@@ -83,6 +84,15 @@ export function WalletPage() {
           </span>
           <span className={styles.cardSub}>Withdrawable</span>
         </div>
+        {stakedBalance && parseFloat(stakedBalance) > 0 && (
+          <div className={`${styles.card} ${styles.cardStaked}`}>
+            <span className={styles.cardLabel}>In Play</span>
+            <span className={styles.cardValue}>
+              ₦{parseFloat(stakedBalance).toLocaleString()}
+            </span>
+            <span className={styles.cardSub}>Locked in active spin</span>
+          </div>
+        )}
       </div>
 
       {kycStatus?.status !== 'approved' && (

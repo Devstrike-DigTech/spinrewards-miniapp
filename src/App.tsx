@@ -15,9 +15,21 @@ export function App() {
   }
 
   if (error) {
+    const tg = (window as any).Telegram?.WebApp
+    const debug = {
+      platform: tg?.platform,
+      version: tg?.version,
+      hasInitData: !!tg?.initData,
+      initDataLen: tg?.initData?.length ?? 0,
+      hasTgWebAppData: window.location.hash?.includes('tgWebAppData'),
+      hashLen: window.location.hash?.length ?? 0,
+    }
     return (
       <div className={styles.errorScreen}>
         <p className={styles.errorText}>{error}</p>
+        <pre style={{ fontSize: 10, color: '#888', textAlign: 'left', padding: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+          {JSON.stringify(debug, null, 2)}
+        </pre>
       </div>
     )
   }
