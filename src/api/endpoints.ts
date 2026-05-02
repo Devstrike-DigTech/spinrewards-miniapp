@@ -3,8 +3,8 @@ import type {
   AuthResponse,
   WalletBalance,
   SpinRequest,
-  SpinOutcome,
-  RTPTier,
+  SpinResult,
+  WheelRecord,
   ReferralInfo,
   DepositRequest,
   DepositRecord,
@@ -77,11 +77,30 @@ export const deposits = {
 
 // Spin
 export const spin = {
-  tiers: (): Promise<RTPTier[]> =>
-    apiClient.get<RTPTier[]>('/spin/tiers/').then((r) => r.data),
+  /** List all wheels currently available to this user.
+   *  Welcome wheel is auto-excluded once the user has used it. */
+  wheels: (): Promise<WheelRecord[]> =>
+    apiClient.get('/spin/wheels/').then((r) => {
+      const d = r.data?.data ?? r.data
+      // Backend wraps the array in { wheels: [...] }
+      return Array.isArray(d) ? d : (d?.wheels ?? [])
+    }),
 
-  execute: (payload: SpinRequest): Promise<SpinOutcome> =>
-    apiClient.post<SpinOutcome>('/spin/', payload).then((r) => r.data),
+  /** Execute a spin. Returns the outcome — animate THEN reveal. */
+  execute: (payload: SpinRequest): Promise<SpinResult> =>
+    apiClient.post('/spin/', payload).then((r) => r.data?.data ?? r.data),
+
+  /** Free one-time welcome spin. No wheel_id or stake needed. */
+  welcome: (clientSeed?: string): Promise<SpinResult> =>
+    apiClient
+      .post('/spin/welcome/', clientSeed ? { client_seed: clientSeed } : {})
+      .then((r) => r.data?.data ?? r.data),
+
+  /** Paginated spin history, newest first. */
+  history: (page = 1): Promise<PaginatedResponse<SpinResult>> =>
+    apiClient
+      .get('/spin/history/', { params: { page } })
+      .then((r) => r.data?.data ?? r.data),
 }
 
 // Referrals
