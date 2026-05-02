@@ -78,6 +78,59 @@ export interface ReferralInfo {
   total_earned: string
 }
 
+// Deposits
+export type DepositProvider = 'paystack' | 'monnify' | 'nowpayments'
+export type DepositStatus = 'pending' | 'completed' | 'failed' | 'expired'
+
+export interface DepositRecord {
+  id: string
+  amount: string
+  provider: DepositProvider
+  status: DepositStatus
+  internal_reference: string
+  provider_reference: string
+  payment_url: string        // Paystack — redirect user here
+  payment_address: string    // NOWPayments — show as QR + copy; Monnify VA details in text form
+  original_amount: string | null   // NOWPayments — USDT amount to send
+  original_currency: string        // NOWPayments — "USDT"
+  conversion_rate: string | null   // NOWPayments — NGN per USDT at lock time
+  created_at: string
+  completed_at: string | null
+}
+
+export interface DepositRequest {
+  amount: string   // string decimal e.g. "5000.00", min ₦100
+  provider: DepositProvider
+}
+
+export interface VirtualAccount {
+  id: string
+  account_number: string
+  account_name: string
+  bank_name: string
+  bank_code: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface PaginatedResponse<T> {
+  count: number
+  next: string | null
+  previous: string | null
+  results: T[]
+}
+
+// Transactions (unified feed from /wallet/transactions/)
+export interface TransactionRecord {
+  id: string
+  type: 'deposit' | 'withdrawal' | 'spin_win' | 'spin_stake' | 'referral_bonus' | string
+  description: string
+  amount: string          // positive = credit, negative = debit
+  currency: 'coins' | 'cash'
+  status: 'pending' | 'completed' | 'failed'
+  created_at: string
+}
+
 // Withdrawals
 export interface WithdrawalRequest {
   amount: number
