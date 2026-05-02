@@ -6,6 +6,10 @@ import type {
   SpinOutcome,
   RTPTier,
   ReferralInfo,
+  DepositRequest,
+  DepositRecord,
+  VirtualAccount,
+  PaginatedResponse,
   WithdrawalRequest,
   WithdrawalRecord,
   KYCSubmission,
@@ -48,6 +52,27 @@ export const wallet = {
     apiClient
       .get('/wallet/transactions/', { params: { page, page_size: pageSize } })
       .then((r) => r.data?.data ?? r.data),
+}
+
+// Deposits
+export const deposits = {
+  /** Initiate a deposit. Returns provider-specific fields (payment_url / payment_address). */
+  initiate: (payload: DepositRequest): Promise<DepositRecord> =>
+    apiClient.post('/deposits/', payload).then((r) => r.data?.data ?? r.data),
+
+  /** Poll this after Paystack redirect until status !== 'pending'. */
+  get: (id: string): Promise<DepositRecord> =>
+    apiClient.get(`/deposits/${id}/`).then((r) => r.data?.data ?? r.data),
+
+  /** Paginated deposit history. */
+  list: (page = 1): Promise<PaginatedResponse<DepositRecord>> =>
+    apiClient
+      .get('/deposits/list/', { params: { page } })
+      .then((r) => r.data?.data ?? r.data),
+
+  /** Get (or create) the user's permanent Monnify virtual account. */
+  virtualAccount: (): Promise<VirtualAccount> =>
+    apiClient.get('/deposits/virtual-account/').then((r) => r.data?.data ?? r.data),
 }
 
 // Spin
