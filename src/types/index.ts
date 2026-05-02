@@ -38,36 +38,47 @@ export interface WalletBalance {
   total_balance: string
 }
 
-// Spin
-export interface SpinOutcome {
-  label: string
+// Spin — Wheels
+export type WheelType = 'standard' | 'power' | 'mega' | 'welcome' | 'daily_challenge'
+
+export interface WheelRecord {
+  id: string
+  wheel_type: WheelType
+  name: string
+  currency_type: 'coin' | 'cash'
+  min_stake: string    // "0.00" for welcome/free wheels
+  max_stake: string
+  is_welcome_only: boolean
+  rtp_target: string   // informational only — do NOT display to users
+}
+
+// Spin — Result
+export type SpinOutcomeType = 'win' | 'loss' | 'push' | 'partial_loss'
+
+export interface SpinResult {
+  id: string
+  wheel: WheelRecord
+  stake_amount: string
+  /** 0-indexed position — pass to spinEngine.spinTo() */
+  segment_position: number
+  /** User-visible label e.g. "3×", "Loss", "₦1000" */
+  segment_label: string
   multiplier: string
-  coin_won: string
-  cash_won: string
-  new_coin_balance: string
-  new_cash_balance: string
+  /** Final NGN payout — already calculated */
+  payout_amount: string
+  /** Drive celebration UI from this, not multiplier */
+  outcome: SpinOutcomeType
+  server_seed_hash: string
+  client_seed: string | null
+  nonce: number
+  is_welcome_spin: boolean
+  created_at: string
 }
 
 export interface SpinRequest {
-  stake_amount: number
-  idempotency_key: string
-}
-
-// RTP
-export interface RTPOutcome {
-  id: string
-  label: string
-  multiplier: string
-  probability: string
-  color: string
-}
-
-export interface RTPTier {
-  id: string
-  min_stake: string
-  max_stake: string
-  rtp_target: string
-  outcomes: RTPOutcome[]
+  wheel_id: string
+  stake_amount: string   // string decimal e.g. "500.00"
+  client_seed?: string
 }
 
 // Referral
