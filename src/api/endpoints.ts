@@ -42,7 +42,12 @@ export const users = {
 // Wallet
 export const wallet = {
   balance: (): Promise<WalletBalance> =>
-    apiClient.get<WalletBalance>('/wallet/').then((r) => r.data),
+    apiClient.get('/wallet/').then((r) => r.data?.data ?? r.data),
+
+  transactions: (page = 1, pageSize = 20) =>
+    apiClient
+      .get('/wallet/transactions/', { params: { page, page_size: pageSize } })
+      .then((r) => r.data?.data ?? r.data),
 }
 
 // Spin

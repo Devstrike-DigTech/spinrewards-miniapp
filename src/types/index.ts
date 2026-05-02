@@ -34,6 +34,8 @@ export interface User {
 export interface WalletBalance {
   coin_balance: string
   cash_balance: string
+  staked_balance: string
+  total_balance: string
 }
 
 // Spin
