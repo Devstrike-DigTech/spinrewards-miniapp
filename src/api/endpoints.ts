@@ -77,16 +77,41 @@ export const deposits = {
 
 // Spin
 export const spin = {
-  /** List all wheels currently available to this user.
-   *  Welcome wheel is auto-excluded once the user has used it. */
+  /**
+   * List ALL wheels (includes inactive). Use activeWheels() for normal user flow.
+   * Only use this for admin/debug views.
+   */
   wheels: (): Promise<WheelRecord[]> =>
     apiClient.get('/spin/wheels/').then((r) => {
       const d = r.data?.data ?? r.data
-      // Backend wraps the array in { wheels: [...] }
       return Array.isArray(d) ? d : (d?.wheels ?? [])
     }),
 
-  /** Execute a spin. Returns the outcome — animate THEN reveal. */
+  /**
+   * List active wheels only. Use this on app startup.
+   * Welcome wheel is auto-excluded after first use.
+   */
+  activeWheels: (): Promise<WheelRecord[]> =>
+    apiClient.get('/spin/wheels/active/').then((r) => {
+      const d = r.data?.data ?? r.data
+      return Array.isArray(d) ? d : (d?.wheels ?? [])
+    }),
+
+  /**
+   * Given a stake amount, returns the single wheel whose range matches.
+   * Range is [min_stake, max_stake) — inclusive lower, exclusive upper.
+   * Throws with code NO_WHEEL_FOR_STAKE (404) if no wheel matches.
+   */
+  forStake: (amount: number): Promise<WheelRecord> =>
+    apiClient
+      .get('/spin/wheels/for-stake/', { params: { amount } })
+      .then((r) => {
+        const d = r.data?.data ?? r.data
+        // Backend wraps in { wheel: { ... } }
+        return d?.wheel ?? d
+      }),
+
+  /** Execute a spin. Call BEFORE starting animation. Outcome is locked here. */
   execute: (payload: SpinRequest): Promise<SpinResult> =>
     apiClient.post('/spin/', payload).then((r) => r.data?.data ?? r.data),
 

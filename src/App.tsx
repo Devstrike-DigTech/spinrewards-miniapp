@@ -4,6 +4,8 @@ import { LoadingScreen } from '@/pages/LoadingScreen'
 import { SpinPage } from '@/pages/SpinPage'
 import { WalletPage } from '@/pages/WalletPage'
 import { InvitePage } from '@/pages/InvitePage'
+import { RewardsPage } from '@/pages/RewardsPage'
+import { ProfilePage } from '@/pages/ProfilePage'
 import { BottomNav } from '@/components/BottomNav/BottomNav'
 import styles from './App.module.css'
 
@@ -41,6 +43,8 @@ export function App() {
           <Route path="/" element={<SpinPage />} />
           <Route path="/wallet" element={<WalletPage />} />
           <Route path="/invite" element={<InvitePage />} />
+          <Route path="/rewards" element={<RewardsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Routes>
       </main>
       <BottomNav />

@@ -1,8 +1,9 @@
 .nav {
   display: flex;
-  background: var(--color-bg-surface);
-  border-top: 1px solid var(--color-bg-elevated);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: #0d1220;
+  border-top: 1px solid #1e2d4d;
+  padding: 4px 0 env(safe-area-inset-bottom, 4px);
+  flex-shrink: 0;
 }
 
 .tab {
@@ -12,23 +13,24 @@
   align-items: center;
   justify-content: center;
   gap: 3px;
-  padding: 10px 0;
-  color: var(--color-text-muted);
-  transition: color var(--transition-fast);
+  padding: 8px 0 6px;
+  color: #60607a;
+  transition: color 0.15s ease;
 }
 
 .active {
-  color: var(--color-accent-purple);
+  color: #c9a028;
 }
 
 .icon {
-  font-size: 22px;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .label {
   font-size: 10px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
