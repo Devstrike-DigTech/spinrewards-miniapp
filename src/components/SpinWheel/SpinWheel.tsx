@@ -1,28 +1,27 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { SpinEngine, DEFAULT_SEGMENTS, type WheelSegment } from './spinEngine'
+export type { WheelSegment }
 import styles from './SpinWheel.module.css'
 
 interface SpinWheelProps {
   segments?: WheelSegment[]
   onSpinComplete?: (segmentIndex: number) => void
+  onSpinStart?: () => void
   engineRef?: React.MutableRefObject<SpinEngine | null>
 }
 
 export function SpinWheel({
   segments = DEFAULT_SEGMENTS,
   onSpinComplete,
+  onSpinStart,
   engineRef,
 }: SpinWheelProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const localEngineRef = useRef<SpinEngine | null>(null)
   const activeRef = engineRef ?? localEngineRef
 
-  const handleSpinComplete = useCallback(
-    (index: number) => {
-      onSpinComplete?.(index)
-    },
-    [onSpinComplete]
-  )
+  const handleSpinComplete = useCallback((idx: number) => onSpinComplete?.(idx), [onSpinComplete])
+  const handleSpinStart = useCallback(() => onSpinStart?.(), [onSpinStart])
 
   useEffect(() => {
     if (!canvasRef.current) return
@@ -31,6 +30,7 @@ export function SpinWheel({
       canvas: canvasRef.current,
       segments,
       onSpinComplete: handleSpinComplete,
+      onSpinStart: handleSpinStart,
     })
 
     engine.init(canvasRef.current)
@@ -50,7 +50,6 @@ export function SpinWheel({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Update segments when they change (e.g. after fetching RTP from backend)
   useEffect(() => {
     activeRef.current?.updateSegments(segments)
   }, [segments, activeRef])

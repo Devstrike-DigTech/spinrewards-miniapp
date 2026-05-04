@@ -1,0 +1,41 @@
+.container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.piece {
+  position: absolute;
+  top: -20px;
+  border-radius: 2px;
+  animation: fall linear forwards;
+  will-change: transform, opacity;
+}
+
+/* Shape variants */
+.circle { border-radius: 50%; }
+.ribbon { border-radius: 1px; }
+.rect   { border-radius: 2px; }
+
+@keyframes fall {
+  0% {
+    transform: translateY(0) translateX(0) rotate(var(--rot));
+    opacity: 1;
+  }
+  25% {
+    transform: translateY(25vh) translateX(calc(var(--sway) * 0.5)) rotate(calc(var(--rot) + 90deg));
+  }
+  50% {
+    transform: translateY(50vh) translateX(0) rotate(calc(var(--rot) + 180deg));
+  }
+  75% {
+    transform: translateY(75vh) translateX(calc(var(--sway) * -0.5)) rotate(calc(var(--rot) + 270deg));
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) translateX(0) rotate(calc(var(--rot) + 360deg));
+    opacity: 0;
+  }
+}
