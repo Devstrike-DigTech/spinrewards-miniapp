@@ -381,212 +381,217 @@ export function SpinPage() {
     <>
       <div className={styles.page}>
 
-        {/* ── Top bar ── */}
-        <div className={styles.topBar}>
-          <div className={styles.coinPill}>
-            <span>🪙</span>
-            <span className={styles.coinPillValue}>{formatCoins(coinBalance)}</span>
-          </div>
-          <div className={styles.topRight}>
-            <button className={styles.iconBtn} onClick={toggleMute}>{muted ? '🔇' : '🔊'}</button>
-            <button className={styles.iconBtn}>🔔</button>
-            <div className={styles.kycBadge}>KYC <span className={styles.kycCheck}>✓</span></div>
-          </div>
-        </div>
+        {/* ══ FIXED TOP — topBar + welcomeBanner + spinCard ══ */}
+        <div className={styles.fixedTop}>
 
-        {/* ── Welcome spin banner (separate flow) ── */}
-        {welcomeWheel && phase === 'idle' && (
-          <button
-            className={styles.welcomeBanner}
-            onClick={handleWelcomeSpin}
-            disabled={phase !== 'idle'}
-          >
-            <span className={styles.welcomeIcon}>🎁</span>
-            <div>
-              <p className={styles.welcomeTitle}>Free Welcome Spin!</p>
-              <p className={styles.welcomeSub}>Tap to claim — no stake needed</p>
+          {/* ── Top bar ── */}
+          <div className={styles.topBar}>
+            <div className={styles.coinPill}>
+              <span>🪙</span>
+              <span className={styles.coinPillValue}>{formatCoins(coinBalance)}</span>
             </div>
-            <span className={styles.welcomeArrow}>›</span>
-          </button>
-        )}
-
-        {/* ── Spin card ── */}
-        <div className={styles.spinCard}>
-          <p className={styles.spinCardTitle}>Enter stake and spin!</p>
-
-          {/* Wheel canvas */}
-          <div className={styles.wheelWrapper}>
-            <SpinWheel
-              key={wheelKey}
-              segments={segments}
-              onSpinComplete={handleAnimationDone}
-              onSpinStart={handleSpinStart}
-              engineRef={engineRef}
-            />
-
-            {/* Preparing overlay */}
-            {phase === 'preparing' && (
-              <div className={styles.wheelOverlay}>
-                <div className={styles.spinner} />
-                <p>Locking in your spin…</p>
-              </div>
-            )}
-
-            {/* Spinning — block interactions */}
-            {phase === 'spinning' && <div className={styles.wheelBlock} />}
+            <div className={styles.topRight}>
+              <button className={styles.iconBtn} onClick={toggleMute}>{muted ? '🔇' : '🔊'}</button>
+              <button className={styles.iconBtn}>🔔</button>
+              <div className={styles.kycBadge}>KYC <span className={styles.kycCheck}>✓</span></div>
+            </div>
           </div>
 
-          {/* ── Active wheel indicator ── */}
-          <div className={styles.wheelBadgeRow}>
-            {lookupState === 'searching' && (
-              <span className={styles.wheelBadgeSearching}>
-                <span className={styles.spinnerInline} /> Finding wheel…
-              </span>
-            )}
-            {lookupState === 'found' && resolvedWheel && (
-              <span className={styles.wheelBadgeFound}>
-                {wheelEmoji(resolvedWheel.wheel_type)} {resolvedWheel.name}
-                <span className={styles.wheelBadgeRange}>
-                  {' '}· ₦{parseFloat(resolvedWheel.min_stake).toLocaleString()}–
-                  ₦{parseFloat(resolvedWheel.max_stake).toLocaleString()}
+          {/* ── Welcome spin banner ── */}
+          {welcomeWheel && phase === 'idle' && (
+            <button
+              className={styles.welcomeBanner}
+              onClick={handleWelcomeSpin}
+              disabled={phase !== 'idle'}
+            >
+              <span className={styles.welcomeIcon}>🎁</span>
+              <div>
+                <p className={styles.welcomeTitle}>Free Welcome Spin!</p>
+                <p className={styles.welcomeSub}>Tap to claim — no stake needed</p>
+              </div>
+              <span className={styles.welcomeArrow}>›</span>
+            </button>
+          )}
+
+          {/* ── Spin card ── */}
+          <div className={styles.spinCard}>
+            <p className={styles.spinCardTitle}>Enter stake and spin!</p>
+
+            {/* Wheel canvas */}
+            <div className={styles.wheelWrapper}>
+              <SpinWheel
+                key={wheelKey}
+                segments={segments}
+                onSpinComplete={handleAnimationDone}
+                onSpinStart={handleSpinStart}
+                engineRef={engineRef}
+              />
+
+              {phase === 'preparing' && (
+                <div className={styles.wheelOverlay}>
+                  <div className={styles.spinner} />
+                  <p>Locking in your spin…</p>
+                </div>
+              )}
+              {phase === 'spinning' && <div className={styles.wheelBlock} />}
+            </div>
+
+            {/* ── Active wheel indicator ── */}
+            <div className={styles.wheelBadgeRow}>
+              {lookupState === 'searching' && (
+                <span className={styles.wheelBadgeSearching}>
+                  <span className={styles.spinnerInline} /> Finding wheel…
                 </span>
-              </span>
+              )}
+              {lookupState === 'found' && resolvedWheel && (
+                <span className={styles.wheelBadgeFound}>
+                  {wheelEmoji(resolvedWheel.wheel_type)} {resolvedWheel.name}
+                  <span className={styles.wheelBadgeRange}>
+                    {' '}· ₦{parseFloat(resolvedWheel.min_stake).toLocaleString()}–
+                    ₦{parseFloat(resolvedWheel.max_stake).toLocaleString()}
+                  </span>
+                </span>
+              )}
+              {(lookupState === 'not_found' || lookupState === 'error') && (
+                <span className={styles.wheelBadgeError}>⚠ {lookupError}</span>
+              )}
+            </div>
+
+            {/* ── Stake section ── */}
+            {phase !== 'error' && (
+              <div className={styles.stakeSection}>
+                <p className={styles.stakeLabel}>
+                  Stake (Min ₦{parseFloat(activeWheels.find(w => !w.is_welcome_only)?.min_stake ?? '200').toLocaleString()})
+                </p>
+                <div className={styles.stakeInputRow}>
+                  <span className={styles.stakeInputIcon}>🪙</span>
+                  <input
+                    className={styles.stakeInput}
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={stake}
+                    onChange={(e) => setStake(e.target.value)}
+                    disabled={phase !== 'idle'}
+                  />
+                </div>
+
+                {/* Horizontally scrollable preset chips */}
+                <div className={styles.quickRow}>
+                  {stakePresets.slice(0, 8).map((amt) => (
+                    <button
+                      key={amt}
+                      className={`${styles.quickChip} ${parseFloat(stake) === amt ? styles.quickChipActive : ''}`}
+                      onClick={() => setStake(String(amt))}
+                      disabled={phase !== 'idle'}
+                    >
+                      <span className={styles.quickChipIcon}>🪙</span>
+                      {amt >= 1000 ? `${amt / 1000}K` : amt}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
-            {lookupState === 'not_found' && (
-              <span className={styles.wheelBadgeError}>⚠ {lookupError}</span>
+
+            {/* ── Error inside card ── */}
+            {phase === 'error' && spinError && (
+              <div className={styles.errorBox}>
+                {spinError.code === 'INSUFFICIENT_FUNDS' ? (
+                  <>
+                    <p className={styles.errorMsg}>Not enough coins to spin</p>
+                    <button
+                      className={styles.errorDepositBtn}
+                      onClick={() => { setShowFund(true); setPhase('idle') }}
+                    >
+                      Deposit Coins
+                    </button>
+                  </>
+                ) : spinError.code === 'RATE_LIMITED' ? (
+                  <p className={styles.errorMsg}>Max 60 spins/hour. Take a breather 😅</p>
+                ) : (
+                  <p className={styles.errorMsg}>{spinError.message}</p>
+                )}
+                <button className={styles.errorRetryBtn} onClick={handlePlayAgain}>Dismiss</button>
+              </div>
             )}
-            {lookupState === 'error' && (
-              <span className={styles.wheelBadgeError}>⚠ {lookupError}</span>
-            )}
+
+            {/* ── Spin button ── */}
+            <button
+              className={styles.spinBtn}
+              onClick={handleSpin}
+              disabled={!canSpin || phase !== 'idle'}
+            >
+              {phase === 'preparing' ? 'Preparing…' :
+               phase === 'spinning'  ? 'Spinning…'  : 'SPIN'}
+            </button>
           </div>
 
-          {/* ── Stake section ── */}
-          {phase !== 'error' && (
-            <div className={styles.stakeSection}>
-              <p className={styles.stakeLabel}>
-                Stake Amount (Min {parseFloat(activeWheels.find(w => !w.is_welcome_only)?.min_stake ?? '200').toLocaleString()} coins)
-              </p>
-              <div className={styles.stakeInputRow}>
-                <span className={styles.stakeIcon}>🪙</span>
-                <input
-                  className={styles.stakeInput}
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={stake}
-                  onChange={(e) => setStake(e.target.value)}
-                  disabled={phase !== 'idle'}
-                />
-              </div>
+        </div>{/* end .fixedTop */}
 
-              {/* Quick-pick presets derived from active wheels */}
-              <div className={styles.quickRow}>
-                {stakePresets.slice(0, 6).map((amt) => (
-                  <button
-                    key={amt}
-                    className={`${styles.quickChip} ${parseFloat(stake) === amt ? styles.quickChipActive : ''}`}
-                    onClick={() => setStake(String(amt))}
-                    disabled={phase !== 'idle'}
-                  >
-                    <span className={styles.quickIcon}>🪙</span>
-                    {amt >= 1000 ? `${amt / 1000}K` : amt}
-                  </button>
+        {/* ══ SCROLLABLE AREA — daily reward + recent spins ══ */}
+        <div className={styles.scrollArea}>
+
+          {/* ── Daily reward ── */}
+          {dailyReward && (
+            <div className={styles.section}>
+              <p className={styles.sectionTitle}>Daily Reward</p>
+              <div className={styles.dayStrip}>
+                {DAY_MULTIPLIERS.map((mult, idx) => {
+                  const day = idx + 1
+                  const streak = dailyReward.current_streak
+                  const claimed = day <= streak
+                  const canClaim = day === streak + 1 && dailyReward.can_claim
+                  return (
+                    <div key={day} className={`${styles.dayCard} ${claimed ? styles.dayCardClaimed : ''} ${canClaim ? styles.dayCardActive : ''}`}>
+                      <p className={styles.dayLabel}>Day {day}</p>
+                      <span className={styles.dayIcon}>🪙</span>
+                      <p className={styles.dayMult}>x{mult}</p>
+                      {claimed ? (
+                        <span className={styles.dayCheck}>✓</span>
+                      ) : (
+                        <button
+                          className={`${styles.claimBtn} ${!canClaim ? styles.claimBtnLocked : ''}`}
+                          onClick={canClaim ? claimDailyReward : undefined}
+                          disabled={!canClaim || claimingReward}
+                        >
+                          {claimingReward && canClaim ? '…' : 'Claim'}
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Recent spins ── */}
+          {recentSpins.length > 0 && (
+            <div className={styles.section}>
+              <p className={styles.sectionTitle}>Recent Spins</p>
+              <div className={styles.recentList}>
+                {recentSpins.map((s) => (
+                  <div key={s.id} className={styles.recentRow}>
+                    <div>
+                      <p className={styles.recentStake}>
+                        Stake: <strong>{formatCoins(s.stake_amount)} coins</strong>
+                      </p>
+                      <p className={styles.recentMult}>{s.segment_label} Multiplier</p>
+                    </div>
+                    <span className={`${styles.recentOutcome} ${styles[`oc_${s.outcome}`]}`}>
+                      {s.outcome === 'win'
+                        ? `+${formatNaira(s.payout_amount)}`
+                        : s.outcome === 'loss'
+                          ? 'LOSS'
+                          : formatNaira(s.payout_amount)}
+                    </span>
+                  </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* ── Error inside card ── */}
-          {phase === 'error' && spinError && (
-            <div className={styles.errorBox}>
-              {spinError.code === 'INSUFFICIENT_FUNDS' ? (
-                <>
-                  <p className={styles.errorMsg}>Not enough coins to spin</p>
-                  <button
-                    className={styles.errorDepositBtn}
-                    onClick={() => { setShowFund(true); setPhase('idle') }}
-                  >
-                    Deposit Coins
-                  </button>
-                </>
-              ) : spinError.code === 'RATE_LIMITED' ? (
-                <p className={styles.errorMsg}>Max 60 spins/hour. Take a breather 😅</p>
-              ) : (
-                <p className={styles.errorMsg}>{spinError.message}</p>
-              )}
-              <button className={styles.errorRetryBtn} onClick={handlePlayAgain}>Dismiss</button>
-            </div>
-          )}
+        </div>{/* end .scrollArea */}
 
-          {/* ── Spin button ── */}
-          <button
-            className={styles.spinBtn}
-            onClick={handleSpin}
-            disabled={!canSpin || phase !== 'idle'}
-          >
-            {phase === 'preparing' ? 'Preparing…' :
-             phase === 'spinning'  ? 'Spinning…'  : 'Spin'}
-          </button>
-        </div>
-
-        {/* ── Daily reward ── */}
-        {dailyReward && (
-          <div className={styles.section}>
-            <p className={styles.sectionTitle}>Daily Reward</p>
-            <div className={styles.dayStrip}>
-              {DAY_MULTIPLIERS.map((mult, idx) => {
-                const day = idx + 1
-                const streak = dailyReward.current_streak
-                const claimed = day <= streak
-                const canClaim = day === streak + 1 && dailyReward.can_claim
-                return (
-                  <div key={day} className={`${styles.dayCard} ${claimed ? styles.dayClaimed : ''} ${canClaim ? styles.dayActive : ''}`}>
-                    <p className={styles.dayLabel}>Day {day}</p>
-                    <span className={styles.dayIcon}>🪙</span>
-                    <p className={styles.dayMult}>x{mult}</p>
-                    {claimed ? (
-                      <span className={styles.dayCheck}>✓</span>
-                    ) : (
-                      <button
-                        className={`${styles.claimBtn} ${!canClaim ? styles.claimLocked : ''}`}
-                        onClick={canClaim ? claimDailyReward : undefined}
-                        disabled={!canClaim || claimingReward}
-                      >
-                        {claimingReward && canClaim ? '…' : 'Claim'}
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── Recent spins ── */}
-        {recentSpins.length > 0 && (
-          <div className={styles.section}>
-            <p className={styles.sectionTitle}>Recent Spins</p>
-            <div className={styles.recentList}>
-              {recentSpins.map((s) => (
-                <div key={s.id} className={styles.recentRow}>
-                  <div>
-                    <p className={styles.recentStake}>
-                      Stake: <strong>{formatCoins(s.stake_amount)} coins</strong>
-                    </p>
-                    <p className={styles.recentMult}>{s.segment_label} Multiplier</p>
-                  </div>
-                  <span className={`${styles.recentOutcome} ${styles[`oc_${s.outcome}`]}`}>
-                    {s.outcome === 'win'
-                      ? `+${formatNaira(s.payout_amount)}`
-                      : s.outcome === 'loss'
-                        ? 'LOSS'
-                        : formatNaira(s.payout_amount)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {showFund && (

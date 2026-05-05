@@ -3,13 +3,34 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
+  background: #0a0a1a;
+}
+
+/* ── Fixed top (topBar + welcomeBanner + spinCard) ── */
+.fixedTop {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 12px 0;
+  overflow: hidden;
+}
+
+/* ── Scrollable area (daily reward + recent spins) ── */
+.scrollArea {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 12px 12px 24px;
-  gap: 12px;
-  background: #0a0a1a;
   -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px 12px 28px;
+  scrollbar-width: none;
 }
+.scrollArea::-webkit-scrollbar { display: none; }
 
 /* ── Loading ── */
 .loadingScreen {
@@ -83,10 +104,10 @@
   background: #101828;
   border: 1px solid #1e2d4d;
   border-radius: 20px;
-  padding: 14px 14px 16px;
+  padding: 12px 14px 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .spinCardTitle {
@@ -145,7 +166,7 @@
   position: relative;
   width: 100%;
   aspect-ratio: 1;
-  max-height: 300px;
+  max-height: 260px;
   margin: 0 auto;
 }
 .wheelWrapper canvas { width: 100% !important; height: 100% !important; }
@@ -208,7 +229,7 @@
 }
 
 /* ── Stake section ── */
-.stakeSection { display: flex; flex-direction: column; gap: 8px; }
+.stakeSection { display: flex; flex-direction: column; gap: 6px; }
 
 .stakeLabel { font-size: 13px; font-weight: 600; color: #c9a028; }
 
@@ -218,7 +239,7 @@
   background: #0a0a1a;
   border: 1px solid #1e2d4d;
   border-radius: 10px;
-  padding: 10px 14px;
+  padding: 8px 14px;
   gap: 8px;
 }
 .stakeInputIcon { font-size: 18px; }
@@ -235,27 +256,37 @@
 .stakeInput::-webkit-outer-spin-button,
 .stakeInput::-webkit-inner-spin-button { -webkit-appearance: none; }
 
-.quickAmountRow { display: flex; gap: 8px; }
+.quickRow {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.quickRow::-webkit-scrollbar { display: none; }
+
 .quickChip {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 8px 4px;
-  border-radius: 8px;
-  background: #0a0a1a;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #0d1120;
   border: 1px solid #1e2d4d;
   color: #a0a0c0;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
+  white-space: nowrap;
   transition: all 0.15s ease;
 }
 .quickChipIcon { font-size: 14px; }
 .quickChipActive {
   border-color: #c9a028;
   color: #c9a028;
-  background: #141e35;
+  background: #1a1400;
+  box-shadow: 0 0 8px rgba(201,160,40,0.2);
 }
 .stakeError { font-size: 12px; color: #e83d3d; text-align: center; }
 
@@ -285,14 +316,14 @@
 /* ── Spin button ── */
 .spinBtn {
   width: 100%;
-  padding: 15px;
+  padding: 13px;
   border-radius: 999px;
-  background: #c9a028;
+  background: linear-gradient(135deg, #e8b830, #c9a028 50%, #a87e14);
   color: #0a0a1a;
   font-size: 17px;
   font-weight: 800;
   letter-spacing: 1px;
-  box-shadow: 0 4px 20px rgba(201,160,40,0.4);
+  box-shadow: 0 4px 24px rgba(201,160,40,0.45), inset 0 1px 0 rgba(255,255,255,0.25);
   transition: transform 0.15s ease, opacity 0.15s ease;
 }
 .spinBtn:active { transform: scale(0.97); }

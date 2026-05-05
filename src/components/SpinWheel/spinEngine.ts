@@ -73,10 +73,13 @@ export class SpinEngine {
     const segCount = this.segments.length
     const segAngle = (Math.PI * 2) / segCount
 
-    // ── Silver outer ring ──────────────────────────────────────────────────
+    // ── Outer metallic ring (5 layers for depth) ───────────────────────────
     const outerRing = new Graphics()
-    outerRing.circle(0, 0, R + 12).fill({ color: 0xc8cdd6 })
-    outerRing.circle(0, 0, R + 6 ).fill({ color: 0x8a9bb0 })
+    outerRing.circle(0, 0, R + 18).fill({ color: 0xd4d9e2 }) // lightest silver
+    outerRing.circle(0, 0, R + 14).fill({ color: 0xa8b4c0 }) // mid silver
+    outerRing.circle(0, 0, R + 10).fill({ color: 0xc8cdd6 }) // highlight band
+    outerRing.circle(0, 0, R +  6).fill({ color: 0x7a8fa8 }) // dark inner groove
+    outerRing.circle(0, 0, R +  3).fill({ color: 0xb0bcc8 }) // inner lip
     this.wheelContainer.addChild(outerRing)
 
     // ── Segments ──────────────────────────────────────────────────────────
@@ -93,14 +96,24 @@ export class SpinEngine {
       slice.fill({ color: seg.color })
       this.wheelContainer.addChild(slice)
 
+      // ── Gloss arc highlight on outer rim of each segment ──────────────
+      if (seg.showCoin) {
+        // Bright arc at rim for a "shiny" look on win segments
+        const gloss = new Graphics()
+        gloss.moveTo(Math.cos(startAngle + 0.04) * (R * 0.88), Math.sin(startAngle + 0.04) * (R * 0.88))
+        gloss.arc(0, 0, R * 0.92, startAngle + 0.04, endAngle - 0.04)
+        gloss.stroke({ color: 0xffffff, width: 2, alpha: 0.22 })
+        this.wheelContainer.addChild(gloss)
+      }
+
       // Divider line between segments
       const line = new Graphics()
       line.moveTo(0, 0)
       line.lineTo(Math.cos(startAngle) * R, Math.sin(startAngle) * R)
-      line.stroke({ color: 0x00000066, width: 1.5 })
+      line.stroke({ color: 0x00000055, width: 1.5 })
       this.wheelContainer.addChild(line)
 
-      // ── Coin icon (only on non-loss segments) ──────────────────────────
+      // ── Coin icon (only on win segments) ──────────────────────────────
       if (seg.showCoin) {
         const coinR  = R * 0.115
         const coinD  = R * 0.70
@@ -108,31 +121,44 @@ export class SpinEngine {
         const cy = Math.sin(midAngle) * coinD
 
         const coin = new Graphics()
-        coin.circle(cx, cy, coinR + 2).fill({ color: 0xb07a06 }) // rim
-        coin.circle(cx, cy, coinR    ).fill({ color: 0xf5c322 }) // gold
-        coin.circle(cx, cy, coinR * 0.6).fill({ color: 0xfde68a }) // shine
+        // Shadow/depth ring
+        coin.circle(cx, cy, coinR + 3.5).fill({ color: 0x000000, alpha: 0.35 })
+        // Dark gold rim
+        coin.circle(cx, cy, coinR + 2).fill({ color: 0x8a5c00 })
+        // Mid gold
+        coin.circle(cx, cy, coinR).fill({ color: 0xe8a800 })
+        // Bright gold face
+        coin.circle(cx, cy, coinR * 0.82).fill({ color: 0xf5c322 })
+        // Inner highlight (off-centre for 3-D look)
+        coin.circle(cx - coinR * 0.18, cy - coinR * 0.22, coinR * 0.38).fill({ color: 0xfde68a, alpha: 0.7 })
         this.wheelContainer.addChild(coin)
 
         // 5-point star on coin
-        const star = this.star(cx, cy, 5, coinR * 0.52, coinR * 0.22)
-        star.fill({ color: 0xd4900a })
+        const star = this.star(cx, cy, 5, coinR * 0.50, coinR * 0.21)
+        star.fill({ color: 0xc47800 })
         this.wheelContainer.addChild(star)
+
+        // Tiny glint dot
+        const glint = new Graphics()
+        glint.circle(cx - coinR * 0.28, cy - coinR * 0.30, coinR * 0.13)
+        glint.fill({ color: 0xffffff, alpha: 0.65 })
+        this.wheelContainer.addChild(glint)
       }
 
       // ── Label text ────────────────────────────────────────────────────
       const isLoss = !seg.showCoin
-      // Loss labels sit closer to centre; win labels sit between centre and coin
-      const textDist = isLoss ? R * 0.52 : R * 0.38
-      const fontSize = Math.max(R * (isLoss ? 0.10 : 0.115), 11)
+      const textDist = isLoss ? R * 0.52 : R * 0.37
+      const fontSize = Math.max(R * (isLoss ? 0.095 : 0.12), 11)
 
       const style = new TextStyle({
-        fill: isLoss ? '#888888' : '#ffffff',
+        fill: isLoss ? '#6a6a7a' : '#ffffff',
         fontSize,
-        fontWeight: '800',
+        fontWeight: '900',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         dropShadow: isLoss ? undefined : {
-          color: '#000000', blur: 4, distance: 1.5, alpha: 0.7,
+          color: '#000000', blur: 5, distance: 1.5, alpha: 0.8,
         },
+        stroke: isLoss ? undefined : { color: '#000000', width: 1.5 },
       })
       const lbl = new Text({ text: seg.label, style })
       lbl.anchor.set(0.5)
@@ -142,35 +168,44 @@ export class SpinEngine {
       this.wheelContainer.addChild(lbl)
     })
 
-    // ── White boundary dots on outer rim ──────────────────────────────────
+    // ── Decorative dots at segment boundaries ──────────────────────────────
     for (let i = 0; i < segCount; i++) {
       const a = i * segAngle - Math.PI / 2
+      // Outer gold dot
       const dot = new Graphics()
-      dot.circle(Math.cos(a) * (R + 3), Math.sin(a) * (R + 3), 5)
-      dot.fill({ color: 0xffffff })
+      dot.circle(Math.cos(a) * (R + 7), Math.sin(a) * (R + 7), 5.5)
+      dot.fill({ color: 0xf5c322 })
       this.wheelContainer.addChild(dot)
+      // Inner white highlight
+      const dotHi = new Graphics()
+      dotHi.circle(Math.cos(a) * (R + 7), Math.sin(a) * (R + 7), 2.5)
+      dotHi.fill({ color: 0xffffff, alpha: 0.9 })
+      this.wheelContainer.addChild(dotHi)
     }
 
-    // ── Inner metallic hub ring ────────────────────────────────────────────
+    // ── Inner metallic hub ring ─────────────────────────────────────────────
     const hub = new Graphics()
-    hub.circle(0, 0, R * 0.24).fill({ color: 0xb8c4d0 })
-    hub.circle(0, 0, R * 0.21).fill({ color: 0x7a8fa8 })
+    hub.circle(0, 0, R * 0.26).fill({ color: 0xd4d9e2 }) // outer silver
+    hub.circle(0, 0, R * 0.23).fill({ color: 0x8a9bb0 }) // dark groove
+    hub.circle(0, 0, R * 0.21).fill({ color: 0xb8c4d0 }) // lighter face
     this.wheelContainer.addChild(hub)
 
     // ── Gold centre cap ────────────────────────────────────────────────────
     const cap = new Graphics()
-    cap.circle(0, 0, R * 0.195).fill({ color: 0xb07a06 }) // dark rim
-    cap.circle(0, 0, R * 0.17 ).fill({ color: 0xf5c322 }) // gold
-    cap.circle(0, 0, R * 0.125).fill({ color: 0xfde88a }) // shine
+    cap.circle(0, 0, R * 0.195).fill({ color: 0x8a5c00 }) // dark rim
+    cap.circle(0, 0, R * 0.175).fill({ color: 0xe8a800 }) // gold base
+    cap.circle(0, 0, R * 0.15 ).fill({ color: 0xf5c322 }) // bright gold
+    cap.circle(-R * 0.04, -R * 0.05, R * 0.07).fill({ color: 0xfde88a, alpha: 0.65 }) // highlight
     this.wheelContainer.addChild(cap)
 
     // SPIN text
     const spinStyle = new TextStyle({
-      fill: '#0a0a1a',
-      fontSize: Math.max(R * 0.09, 11),
+      fill: '#1a0800',
+      fontSize: Math.max(R * 0.085, 10),
       fontWeight: '900',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      letterSpacing: 1,
+      letterSpacing: 1.5,
+      stroke: { color: '#c47800', width: 1 },
     })
     const spinText = new Text({ text: 'SPIN', style: spinStyle })
     spinText.anchor.set(0.5)
@@ -194,27 +229,41 @@ export class SpinEngine {
   private drawPointer() {
     const R = this.radius
 
-    const base = new Graphics()
-    base.circle(0, -(R + 13), 9).fill({ color: 0xffffff })
-    this.app.stage.addChild(base)
-    base.x = this.wheelContainer.x
-    base.y = this.wheelContainer.y
+    // Shadow behind pointer
+    const shadow = new Graphics()
+    shadow.moveTo(2, -(R + 4))
+    shadow.lineTo(-9, -(R + 26))
+    shadow.lineTo(12, -(R + 26))
+    shadow.closePath()
+    shadow.fill({ color: 0x000000, alpha: 0.4 })
+    this.app.stage.addChild(shadow)
+    shadow.x = this.wheelContainer.x
+    shadow.y = this.wheelContainer.y
 
+    // Red pointer triangle
     const ptr = new Graphics()
-    ptr.moveTo(0, -(R + 5))
-    ptr.lineTo(-9, -(R + 23))
-    ptr.lineTo(9, -(R + 23))
+    ptr.moveTo(0, -(R + 3))
+    ptr.lineTo(-10, -(R + 27))
+    ptr.lineTo(10, -(R + 27))
     ptr.closePath()
     ptr.fill({ color: 0xe83d3d })
     ptr.stroke({ color: 0xffffff, width: 1.5 })
     this.app.stage.addChild(ptr)
     ptr.x = this.wheelContainer.x
     ptr.y = this.wheelContainer.y
+
+    // Gold base circle where pointer meets ring
+    const base = new Graphics()
+    base.circle(0, -(R + 11), 8).fill({ color: 0xf5c322 })
+    base.circle(0, -(R + 11), 5).fill({ color: 0xfde88a })
+    this.app.stage.addChild(base)
+    base.x = this.wheelContainer.x
+    base.y = this.wheelContainer.y
   }
 
   private drawGlowRing() {
     const ring = new Graphics()
-    ring.circle(0, 0, this.radius + 16).stroke({ color: 0xc9a028, width: 5, alpha: 0 })
+    ring.circle(0, 0, this.radius + 22).stroke({ color: 0xf5c322, width: 6, alpha: 0 })
     this.wheelContainer.addChildAt(ring, 0)
     this.glowRing = ring
   }
