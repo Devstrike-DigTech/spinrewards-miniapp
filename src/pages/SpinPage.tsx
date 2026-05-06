@@ -291,30 +291,45 @@ export function SpinPage() {
   // RESULT FULL-SCREEN OVERLAY
   // ══════════════════════════════════════════════════════════════════════════
   if (phase === 'revealing' && spinResult) {
-    const isWin     = spinResult.outcome === 'win'
-    const isLoss    = spinResult.outcome === 'loss'
-    const isPush    = spinResult.outcome === 'push'
+    const isWin  = spinResult.outcome === 'win'
+    const isLoss = spinResult.outcome === 'loss'
+    const isPush = spinResult.outcome === 'push'
+
+    const shareText = isWin
+      ? `🎉 I just won ${formatNaira(spinResult.payout_amount)} on Spin Rewards! Join me 👉 https://t.me/SpinRewardsBot`
+      : `🎡 I'm spinning on Spin Rewards — come join! 👉 https://t.me/SpinRewardsBot`
+
+    const handleShare = () => {
+      const tg = (window as any).Telegram?.WebApp
+      tg?.switchInlineQuery?.(shareText) ?? navigator.clipboard?.writeText?.(shareText)
+      haptic.notificationOccurred('success')
+    }
 
     return (
-      <div className={`${styles.resultScreen} ${isWin ? styles.resultWin : isLoss ? styles.resultLoss : ''}`}>
+      <div className={`${styles.resultScreen} ${isWin ? styles.resultScreenWin : isLoss ? styles.resultScreenLoss : styles.resultScreenPush}`}>
+
+        {/* Confetti burst — sits behind content (z-index 0), covers full screen */}
         {isWin && <Confetti />}
 
         <div className={styles.resultContent}>
+
+          {/* ── Illustration ── */}
           {isWin ? (
             <>
-              <div className={styles.resultEmoji}>🎉</div>
-              <p className={styles.resultHeading}>Congratulations! You won!</p>
+              <div className={styles.resultIllustration}>🎉</div>
+              <p className={styles.resultHeading}>Congratulations!</p>
+              <p className={styles.resultWinSub}>You won</p>
               <p className={styles.resultAmount}>{formatNaira(spinResult.payout_amount)}</p>
-              <p className={styles.resultSub}>Added to your withdrawable cash balance</p>
+              <p className={styles.resultSub}>Added to your withdrawable balance</p>
             </>
           ) : isLoss ? (
             <>
-              <div className={styles.resultEmoji}>
-                <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-                  <circle cx="40" cy="40" r="36" stroke="#6c7cbf" strokeWidth="4"/>
-                  <circle cx="28" cy="32" r="4" fill="#6c7cbf"/>
-                  <circle cx="52" cy="32" r="4" fill="#6c7cbf"/>
-                  <path d="M26 54 Q40 44 54 54" stroke="#6c7cbf" strokeWidth="4" strokeLinecap="round" fill="none"/>
+              <div className={styles.resultIllustration}>
+                <svg width="110" height="110" viewBox="0 0 110 110" fill="none">
+                  <circle cx="55" cy="55" r="48" stroke="#6c7cbf" strokeWidth="5" strokeOpacity="0.9"/>
+                  <circle cx="38" cy="46" r="6.5" fill="#6c7cbf"/>
+                  <circle cx="72" cy="46" r="6.5" fill="#6c7cbf"/>
+                  <path d="M36 76 Q55 62 74 76" stroke="#6c7cbf" strokeWidth="5.5" strokeLinecap="round" fill="none"/>
                 </svg>
               </div>
               <p className={styles.resultHeading}>So Close!</p>
@@ -322,19 +337,18 @@ export function SpinPage() {
             </>
           ) : (
             <>
-              <div className={styles.resultEmoji}>↩️</div>
-              <p className={styles.resultHeading}>
-                {isPush ? 'Push — Stake Returned' : 'Partial Return'}
-              </p>
+              <div className={styles.resultIllustration} style={{ fontSize: 100 }}>↩️</div>
+              <p className={styles.resultHeading}>{isPush ? 'Stake Returned!' : 'Partial Return'}</p>
               <p className={styles.resultAmount}>{formatNaira(spinResult.payout_amount)}</p>
               <p className={styles.resultSub}>
                 {isPush
-                  ? 'Your full stake was returned to your balance'
+                  ? 'Your full stake has been returned'
                   : `Partial return on ${formatNaira(spinResult.stake_amount)} stake`}
               </p>
             </>
           )}
 
+          {/* ── Buttons ── */}
           <div className={styles.resultActions}>
             <button className={styles.resultPrimaryBtn} onClick={handlePlayAgain}>
               {isLoss ? 'Try Again' : 'Spin Again'}
@@ -343,22 +357,15 @@ export function SpinPage() {
               <button className={styles.resultSecondaryBtn} onClick={() => navigate('/wallet')}>
                 Withdraw
               </button>
-              <button
-                className={styles.resultSecondaryBtn}
-                onClick={() => {
-                  const tg = (window as any).Telegram?.WebApp
-                  const txt = isWin
-                    ? `🎉 I just won ${formatNaira(spinResult.payout_amount)} on Spin Rewards! Join me 👉 https://t.me/SpinRewardsBot`
-                    : `🎡 I'm spinning on Spin Rewards — come join! 👉 https://t.me/SpinRewardsBot`
-                  tg?.switchInlineQuery?.(txt) ?? navigator.clipboard?.writeText?.(txt)
-                  haptic.notificationOccurred('success')
-                }}
-              >
+              <button className={styles.resultSecondaryBtn} onClick={handleShare}>
                 Share Result
               </button>
             </div>
-            <button className={styles.resultBackBtn} onClick={handlePlayAgain}>‹ Back</button>
+            <button className={styles.resultBackBtn} onClick={handlePlayAgain}>
+              ‹ Back
+            </button>
           </div>
+
         </div>
       </div>
     )
