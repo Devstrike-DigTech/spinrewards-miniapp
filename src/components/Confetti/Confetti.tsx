@@ -4,9 +4,10 @@ import styles from './Confetti.module.css'
 const COLORS = [
   '#f5c322', '#e83d8a', '#6c3de8', '#3de8c4',
   '#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff',
+  '#ff9f43', '#ee5a24', '#a29bfe', '#55efc4',
 ]
 const SHAPES = ['rect', 'circle', 'ribbon'] as const
-const COUNT = 60
+const COUNT = 90
 
 interface Piece {
   id: number
@@ -27,9 +28,9 @@ export function Confetti() {
       color: COLORS[i % COLORS.length],
       shape: SHAPES[i % SHAPES.length],
       left: Math.random() * 100,
-      delay: Math.random() * 1.4,
-      duration: 2.2 + Math.random() * 1.8,
-      size: 6 + Math.random() * 8,
+      delay: Math.random() * 0.8,
+      duration: 3.0 + Math.random() * 2.5,
+      size: 7 + Math.random() * 10,
       rotation: Math.random() * 360,
       swayAmp: 40 + Math.random() * 80,
     }))

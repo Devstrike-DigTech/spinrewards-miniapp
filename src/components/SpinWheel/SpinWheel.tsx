@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 import { SpinEngine, DEFAULT_SEGMENTS, type WheelSegment } from './spinEngine'
 export type { WheelSegment }
 import styles from './SpinWheel.module.css'
@@ -20,8 +20,13 @@ export function SpinWheel({
   const localEngineRef = useRef<SpinEngine | null>(null)
   const activeRef = engineRef ?? localEngineRef
 
-  const handleSpinComplete = useCallback((idx: number) => onSpinComplete?.(idx), [onSpinComplete])
-  const handleSpinStart = useCallback(() => onSpinStart?.(), [onSpinStart])
+  // ── Stable refs so the engine always calls the LATEST callbacks ──────────
+  // The engine is created once (no deps), so without refs it would capture
+  // stale closures — spinResult would always be null inside handleAnimationDone.
+  const onSpinCompleteRef = useRef(onSpinComplete)
+  const onSpinStartRef    = useRef(onSpinStart)
+  useEffect(() => { onSpinCompleteRef.current = onSpinComplete }, [onSpinComplete])
+  useEffect(() => { onSpinStartRef.current    = onSpinStart    }, [onSpinStart])
 
   useEffect(() => {
     if (!canvasRef.current) return
@@ -29,8 +34,8 @@ export function SpinWheel({
     const engine = new SpinEngine({
       canvas: canvasRef.current,
       segments,
-      onSpinComplete: handleSpinComplete,
-      onSpinStart: handleSpinStart,
+      onSpinComplete: (idx) => onSpinCompleteRef.current?.(idx),
+      onSpinStart:    ()    => onSpinStartRef.current?.(),
     })
 
     engine.init(canvasRef.current)
