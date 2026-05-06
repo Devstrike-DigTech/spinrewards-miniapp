@@ -68,6 +68,14 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+
+  // When the body is FormData (file uploads), remove the default
+  // Content-Type so the browser can set it with the correct multipart
+  // boundary. Without this Django returns 415 Unsupported Media Type.
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type']
+  }
+
   logRequest(config)
   return config
 })
