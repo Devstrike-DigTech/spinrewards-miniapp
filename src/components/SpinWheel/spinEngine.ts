@@ -164,7 +164,17 @@ export class SpinEngine {
       lbl.anchor.set(0.5)
       lbl.x = Math.cos(midAngle) * textDist
       lbl.y = Math.sin(midAngle) * textDist
-      lbl.rotation = midAngle + Math.PI / 2
+
+      // Compute rotation so text always reads outward from centre.
+      // midAngle + π/2 gives the correct angle for top-half segments, but for
+      // bottom-half segments (sin(midAngle) > 0 in Pixi's y-down coords) this
+      // pushes past 180° and the label ends up upside-down — so add π to flip it.
+      let textRot = midAngle + Math.PI / 2
+      const normMid = ((midAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)
+      if (normMid > Math.PI / 2 && normMid < Math.PI * 1.5) {
+        textRot += Math.PI
+      }
+      lbl.rotation = textRot
       this.wheelContainer.addChild(lbl)
     })
 

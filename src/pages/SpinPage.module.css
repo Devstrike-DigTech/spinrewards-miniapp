@@ -154,19 +154,21 @@
   text-align: left;
   animation: glowPulse 2s ease-in-out infinite;
 }
+.welcomeIcon  { font-size: 26px; flex-shrink: 0; }
+.welcomeArrow { font-size: 18px; color: #c9a028; margin-left: auto; flex-shrink: 0; }
 .welcomeTitle { font-size: 13px; font-weight: 700; color: #c9a028; }
-.welcomeSub { font-size: 11px; color: #60607a; margin-top: 2px; }
+.welcomeSub   { font-size: 11px; color: #60607a; margin-top: 2px; }
 @keyframes glowPulse {
   0%,100% { box-shadow: 0 0 0 rgba(201,160,40,0); }
   50%      { box-shadow: 0 0 12px rgba(201,160,40,0.3); }
 }
 
-/* Wheel wrapper */
+/* Wheel wrapper — fixed square so it never overflows into the stake row */
 .wheelWrapper {
   position: relative;
-  width: 100%;
-  aspect-ratio: 1;
-  max-height: 200px;
+  width: 200px;
+  height: 200px;
+  flex-shrink: 0;
   margin: 0 auto;
 }
 .wheelWrapper canvas { width: 100% !important; height: 100% !important; }
