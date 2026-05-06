@@ -4,13 +4,13 @@ import { useWalletStore } from '@/store/walletStore'
 import { formatNaira, formatCoins, formatDate } from '@/lib/format'
 import { FundWalletModal } from '@/components/FundWalletModal/FundWalletModal'
 import { WithdrawModal } from '@/components/WithdrawModal/WithdrawModal'
-import type { TransactionRecord, KYCStatus } from '@/types'
+import type { TransactionRecord, KYCStatusResponse } from '@/types'
 import styles from './WalletPage.module.css'
 
 export function WalletPage() {
   const { coinBalance, cashBalance, stakedBalance, setBalance } = useWalletStore()
   const [transactions, setTransactions] = useState<TransactionRecord[]>([])
-  const [kycStatus, setKycStatus] = useState<KYCStatus | null>(null)
+  const [kycStatus, setKycStatus] = useState<KYCStatusResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showFund, setShowFund] = useState(false)
@@ -80,8 +80,8 @@ export function WalletPage() {
     )
   }
 
-  const kycApproved = kycStatus?.status === 'approved'
-  const canWithdraw = kycApproved && parseFloat(cashBalance ?? '0') >= 2000
+  const kycApproved = kycStatus?.overall_status === 'approved'
+  const canWithdraw = (kycApproved || kycStatus?.can_withdraw === true) && parseFloat(cashBalance ?? '0') >= 2000
 
   return (
     <>
@@ -143,22 +143,22 @@ export function WalletPage() {
 
         {/* ── KYC Banner ── */}
         {!kycApproved && (
-          <div className={`${styles.kycBanner} ${kycStatus?.status === 'pending' ? styles.kycPending : ''}`}>
+          <div className={`${styles.kycBanner} ${kycStatus?.overall_status === 'partial' ? styles.kycPending : ''}`}>
             <div className={styles.kycBannerLeft}>
               <span className={styles.kycBannerIcon}>
-                {kycStatus?.status === 'pending' ? '⏳' : '🔍'}
+                {kycStatus?.overall_status === 'partial' ? '⚠️' : '🔍'}
               </span>
               <p className={styles.kycBannerText}>
-                {kycStatus?.status === 'pending'
-                  ? 'KYC verification in review — withdrawals unlock once approved.'
-                  : kycStatus?.status === 'rejected'
-                    ? `KYC rejected: ${kycStatus.rejection_reason ?? 'See support'}`
-                    : 'Verify your identity to unlock withdrawals.'}
+                {kycStatus?.overall_status === 'partial'
+                  ? 'Some KYC details need correction before you can withdraw.'
+                  : kycStatus?.overall_status === 'rejected'
+                    ? 'Your KYC was rejected. Contact support for help.'
+                    : 'Verify your identity to unlock cash withdrawals.'}
               </p>
             </div>
-            {(kycStatus?.status === 'unverified' || kycStatus?.status === 'rejected') && (
-              <button className={styles.kycBtn}>Verify Now</button>
-            )}
+            <button className={styles.kycBtn} onClick={() => window.location.assign('/kyc')}>
+              {kycStatus?.overall_status === 'partial' ? 'Fix Now' : 'Verify Now'}
+            </button>
           </div>
         )}
 

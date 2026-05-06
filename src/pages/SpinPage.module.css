@@ -90,14 +90,21 @@
   align-items: center;
   gap: 4px;
   background: #141e35;
-  border: 1px solid #1e3a2a;
+  border: 1px solid #1e2d4d;
   border-radius: 999px;
   padding: 5px 10px;
   font-size: 12px;
   font-weight: 600;
   color: #a0a0c0;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
 }
-.kycCheck { color: #3de88a; font-size: 13px; }
+.kycBadge:active { opacity: 0.75; }
+.kycBadgeVerified { border-color: rgba(61, 232, 138, 0.35); color: #3de88a; }
+.kycBadgeWarn     { border-color: rgba(232, 160, 50, 0.4);  color: #e8a032; }
+.kycIconGreen { color: #3de88a; font-size: 13px; }
+.kycIconOrange { color: #e8a032; font-size: 13px; font-weight: 800; }
+.kycIconDim   { color: #60607a; font-size: 14px; }
 
 /* ── Spin card ── */
 .spinCard {

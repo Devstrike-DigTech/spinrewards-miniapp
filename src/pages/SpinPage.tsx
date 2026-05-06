@@ -4,13 +4,13 @@ import { SpinWheel } from '@/components/SpinWheel/SpinWheel'
 import { SpinEngine, DEFAULT_SEGMENTS } from '@/components/SpinWheel/spinEngine'
 import { Confetti } from '@/components/Confetti/Confetti'
 import { FundWalletModal } from '@/components/FundWalletModal/FundWalletModal'
-import { spin as spinApi, wallet, rewards as rewardsApi } from '@/api/endpoints'
+import { spin as spinApi, wallet, rewards as rewardsApi, kyc as kycApi } from '@/api/endpoints'
 import { useWalletStore } from '@/store/walletStore'
 import { useTelegram } from '@/hooks/useTelegram'
 import { sounds } from '@/lib/sounds'
 import { getWheelVisualConfig, deriveStakePresets, segmentsFromApi } from '@/lib/wheelConfig'
 import { formatNaira, formatCoins } from '@/lib/format'
-import type { WheelRecord, SpinResult, DailyRewardStatus } from '@/types'
+import type { WheelRecord, SpinResult, DailyRewardStatus, KYCOverallStatus } from '@/types'
 import styles from './SpinPage.module.css'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -78,6 +78,9 @@ export function SpinPage() {
   // Fund modal
   const [showFund, setShowFund] = useState(false)
 
+  // KYC status for top-bar badge
+  const [kycOverall, setKycOverall] = useState<KYCOverallStatus | null>(null)
+
   // Mute
   const [muted, setMuted] = useState(false)
 
@@ -88,7 +91,8 @@ export function SpinPage() {
       wallet.balance(),
       rewardsApi.status(),
       spinApi.history(1),
-    ]).then(([wheelsR, balR, rewardR, histR]) => {
+      kycApi.status(),
+    ]).then(([wheelsR, balR, rewardR, histR, kycR]) => {
       if (wheelsR.status === 'fulfilled') {
         const list = wheelsR.value
         setActiveWheels(list)
@@ -103,6 +107,7 @@ export function SpinPage() {
         const d = histR.value
         setRecentSpins(Array.isArray(d) ? d.slice(0, 5) : (d?.results ?? []).slice(0, 5))
       }
+      if (kycR.status === 'fulfilled') setKycOverall(kycR.value.overall_status)
       setLoadingWheels(false)
     })
   }, [setBalance])
@@ -401,7 +406,18 @@ export function SpinPage() {
             <div className={styles.topRight}>
               <button className={styles.iconBtn} onClick={toggleMute}>{muted ? '🔇' : '🔊'}</button>
               <button className={styles.iconBtn}>🔔</button>
-              <div className={styles.kycBadge}>KYC <span className={styles.kycCheck}>✓</span></div>
+              <button
+                className={`${styles.kycBadge} ${kycOverall === 'approved' ? styles.kycBadgeVerified : kycOverall === 'partial' || kycOverall === 'rejected' ? styles.kycBadgeWarn : ''}`}
+                onClick={() => navigate('/kyc')}
+              >
+                KYC{' '}
+                {kycOverall === 'approved'
+                  ? <span className={styles.kycIconGreen}>✓</span>
+                  : kycOverall === 'partial' || kycOverall === 'rejected'
+                    ? <span className={styles.kycIconOrange}>!</span>
+                    : <span className={styles.kycIconDim}>›</span>
+                }
+              </button>
             </div>
           </div>
 

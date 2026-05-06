@@ -171,15 +171,46 @@ export interface WithdrawalRecord {
 }
 
 // KYC
-export interface KYCSubmission {
-  nin: string
-  bank_code: string
-  account_number: string
+export type KYCOverallStatus = 'unverified' | 'pending' | 'partial' | 'approved' | 'rejected'
+export type KYCSectionStatus = 'pending' | 'verified' | 'requires_correction' | 'rejected'
+
+export interface KYCStatusResponse {
+  overall_status: KYCOverallStatus
+  personal_info_status: KYCSectionStatus
+  personal_info_reason: string
+  bank_account_status: KYCSectionStatus
+  bank_account_reason: string
+  document_status: KYCSectionStatus
+  document_reason: string
+  can_withdraw: boolean
+  submitted_at: string | null
+  last_resubmission_at: string | null
 }
 
-export interface KYCStatus {
-  status: 'unverified' | 'pending' | 'approved' | 'rejected'
-  rejection_reason?: string
+export interface KYCBank {
+  code: string
+  name: string
+}
+
+export interface KYCDocumentUploadResponse {
+  id: string
+  document_type: string
+  original_filename: string
+  file_size_bytes: number
+  content_type: string
+  status: string
+  uploaded_at: string
+}
+
+export interface KYCSubmitPayload {
+  full_name: string
+  nin: string
+  bvn: string
+  date_of_birth: string  // YYYY-MM-DD
+  phone_number?: string
+  bank_code: string
+  account_number: string
+  document_id: string
 }
 
 // Daily Reward

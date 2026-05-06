@@ -12,8 +12,10 @@ import type {
   PaginatedResponse,
   WithdrawalRequest,
   WithdrawalRecord,
-  KYCSubmission,
-  KYCStatus,
+  KYCStatusResponse,
+  KYCBank,
+  KYCDocumentUploadResponse,
+  KYCSubmitPayload,
   DailyRewardStatus,
   User,
 } from '@/types'
@@ -147,11 +149,48 @@ export const withdrawals = {
 
 // KYC
 export const kyc = {
-  status: (): Promise<KYCStatus> =>
-    apiClient.get<KYCStatus>('/kyc/').then((r) => r.data),
+  /** Current KYC status — always call first when opening the KYC screen. */
+  status: (): Promise<KYCStatusResponse> =>
+    apiClient.get('/kyc/status/').then((r) => r.data?.data ?? r.data),
 
-  submit: (payload: KYCSubmission): Promise<void> =>
-    apiClient.post('/kyc/', payload).then(() => undefined),
+  /** Nigerian bank list for the dropdown — server-cached 24 h. */
+  banks: (): Promise<KYCBank[]> =>
+    apiClient.get('/kyc/banks/').then((r) => {
+      const d = r.data?.data ?? r.data
+      return d?.banks ?? d
+    }),
+
+  /**
+   * Upload a utility bill or bank statement BEFORE submitting.
+   * Returns the document_id to include in submit payload.
+   * Do NOT manually set Content-Type — axios handles the multipart boundary.
+   */
+  uploadDocument: (
+    file: File,
+    documentType: 'utility_bill' | 'bank_statement' = 'utility_bill'
+  ): Promise<KYCDocumentUploadResponse> => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('document_type', documentType)
+    return apiClient.post('/kyc/upload-document/', form).then((r) => r.data?.data ?? r.data)
+  },
+
+  /**
+   * Live bank account lookup — debounce 300 ms before calling.
+   * Triggers when bank_code AND account_number (10 digits) are both filled.
+   * Returns the account name string.
+   */
+  resolveBank: (bankCode: string, accountNumber: string): Promise<string> =>
+    apiClient
+      .post('/kyc/resolve-bank/', { bank_code: bankCode, account_number: accountNumber })
+      .then((r) => {
+        const d = r.data?.data ?? r.data
+        return (d?.account_name ?? d) as string
+      }),
+
+  /** Submit (or resubmit) the KYC form. Returns full status snapshot. */
+  submit: (payload: KYCSubmitPayload): Promise<KYCStatusResponse> =>
+    apiClient.post('/kyc/submit/', payload).then((r) => r.data?.data ?? r.data),
 }
 
 // Daily reward
