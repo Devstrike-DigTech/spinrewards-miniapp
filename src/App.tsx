@@ -6,6 +6,7 @@ import { WalletPage } from '@/pages/WalletPage'
 import { InvitePage } from '@/pages/InvitePage'
 import { RewardsPage } from '@/pages/RewardsPage'
 import { ProfilePage } from '@/pages/ProfilePage'
+import { KYCPage } from '@/pages/KYCPage'
 import { BottomNav } from '@/components/BottomNav/BottomNav'
 import styles from './App.module.css'
 
@@ -45,6 +46,7 @@ export function App() {
           <Route path="/invite" element={<InvitePage />} />
           <Route path="/rewards" element={<RewardsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/kyc" element={<KYCPage />} />
         </Routes>
       </main>
       <BottomNav />
