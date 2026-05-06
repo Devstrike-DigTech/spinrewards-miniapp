@@ -8,7 +8,7 @@ import { spin as spinApi, wallet, rewards as rewardsApi } from '@/api/endpoints'
 import { useWalletStore } from '@/store/walletStore'
 import { useTelegram } from '@/hooks/useTelegram'
 import { sounds } from '@/lib/sounds'
-import { getWheelVisualConfig, deriveStakePresets } from '@/lib/wheelConfig'
+import { getWheelVisualConfig, deriveStakePresets, segmentsFromApi } from '@/lib/wheelConfig'
 import { formatNaira, formatCoins } from '@/lib/format'
 import type { WheelRecord, SpinResult, DailyRewardStatus } from '@/types'
 import styles from './SpinPage.module.css'
@@ -151,17 +151,18 @@ export function SpinPage() {
     return () => { cancelled = true }
   }, [debouncedStake])
 
-  // ── Segments: derived from the currently resolved wheel ───────────────────
-  const segments = useMemo(
-    () =>
-      resolvedWheel
-        ? getWheelVisualConfig(resolvedWheel.wheel_type)
-        : DEFAULT_SEGMENTS,
-    [resolvedWheel]
-  )
+  // ── Segments: prefer backend-provided segments, fall back to local config ──
+  const segments = useMemo(() => {
+    if (!resolvedWheel) return DEFAULT_SEGMENTS
+    if (resolvedWheel.segments && resolvedWheel.segments.length > 0) {
+      return segmentsFromApi(resolvedWheel.segments)
+    }
+    return getWheelVisualConfig(resolvedWheel.wheel_type)
+  }, [resolvedWheel])
 
-  // Re-key the SpinWheel when the wheel type changes so Pixi re-initialises
-  const wheelKey = resolvedWheel?.wheel_type ?? 'default'
+  // Re-key the SpinWheel by wheel ID so Pixi re-initialises whenever the
+  // wheel (and therefore its segments) change — even across the same type.
+  const wheelKey = resolvedWheel?.id ?? 'default'
 
   // ── Daily reward ──────────────────────────────────────────────────────────
   const claimDailyReward = useCallback(async () => {

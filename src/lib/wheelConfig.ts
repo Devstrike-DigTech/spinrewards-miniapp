@@ -112,6 +112,24 @@ export function getWheelVisualConfig(wheelType: string): VisualSegment[] {
 }
 
 /**
+ * Converts backend WheelSegmentAPI[] → VisualSegment[].
+ * Segments are sorted by position so index === position.
+ * showCoin is true for any segment whose multiplier >= 1 (i.e. the player
+ * gets at least their stake back — losses and partial losses don't show a coin).
+ */
+export function segmentsFromApi(
+  apiSegments: import('@/types').WheelSegmentAPI[]
+): VisualSegment[] {
+  return [...apiSegments]
+    .sort((a, b) => a.position - b.position)
+    .map((seg) => ({
+      label: seg.label,
+      color: seg.color,
+      showCoin: parseFloat(seg.multiplier) >= 1,
+    }))
+}
+
+/**
  * Derives stake preset chips from the list of active wheels.
  * Returns a sorted, de-duped list of suggested amounts.
  */

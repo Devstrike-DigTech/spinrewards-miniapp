@@ -41,6 +41,18 @@ export interface WalletBalance {
 // Spin — Wheels
 export type WheelType = 'standard' | 'power' | 'mega' | 'welcome' | 'daily_challenge'
 
+/**
+ * One segment as returned by the backend.
+ * position matches segment_position in SpinResult — pass to spinTo() as-is.
+ */
+export interface WheelSegmentAPI {
+  position: number
+  label: string       // e.g. "Loss", "0.5×", "2×", "₦1000"
+  multiplier: string  // decimal string e.g. "0.00", "2.00"
+  weight: number      // relative probability weight (not shown to user)
+  color: string       // hex e.g. "#1A237E"
+}
+
 export interface WheelRecord {
   id: string
   wheel_type: WheelType
@@ -50,6 +62,8 @@ export interface WheelRecord {
   max_stake: string
   is_welcome_only: boolean
   rtp_target: string   // informational only — do NOT display to users
+  /** Segment definitions from the backend — use these to draw the wheel */
+  segments?: WheelSegmentAPI[]
 }
 
 // Spin — Result
