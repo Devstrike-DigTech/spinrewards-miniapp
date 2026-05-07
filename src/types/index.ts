@@ -157,17 +157,52 @@ export interface TransactionRecord {
 }
 
 // Withdrawals
-export interface WithdrawalRequest {
-  amount: number
+export type WithdrawalStatus =
+  | 'pending_review'
+  | 'pending'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'rejected'
+  | 'cancelled'
+
+export interface WithdrawalBankAccount {
+  id: string
   bank_code: string
-  account_number: string
+  bank_name: string
+  account_number_masked: string
+  account_name: string
+  is_active: boolean
+  verified_at: string
 }
 
 export interface WithdrawalRecord {
   id: string
+  bank_account: WithdrawalBankAccount
   amount: string
-  status: 'pending' | 'processing' | 'completed' | 'failed'
-  created_at: string
+  fee: string
+  net_amount: string
+  status: WithdrawalStatus
+  reference: string
+  requires_review: boolean
+  forced_manual_review: boolean
+  failure_reason: string
+  requested_at: string
+  completed_at: string | null
+}
+
+export interface WithdrawalLimits {
+  min_withdrawal: string
+  max_per_transaction: string
+  max_daily_amount: string
+  max_daily_count: number
+  auto_payout_threshold: string
+  cash_balance: string
+  today_total: string
+  today_count: number
+  remaining_today_amount: string
+  remaining_today_count: number
+  kyc_approved: boolean
 }
 
 // KYC

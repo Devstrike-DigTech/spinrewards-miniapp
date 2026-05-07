@@ -1,0 +1,422 @@
+/* ── Page shell ── */
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #0a0a1a;
+  padding: 20px 16px 40px;
+  gap: 16px;
+  scrollbar-width: none;
+}
+.page::-webkit-scrollbar { display: none; }
+
+/* ── Loading ── */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #1e2d4d;
+  border-top-color: #c9a028;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Page header ── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.backBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #141e35;
+  border: 1px solid #1e2d4d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a0a0c0;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.pageTitle {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+/* ── Balance summary card ── */
+.balanceCard {
+  background: #0f1527;
+  border: 1px solid #1e2d4d;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.balanceLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.balanceIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(61, 232, 138, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.balanceLabel {
+  font-size: 12px;
+  color: #60607a;
+  font-weight: 500;
+}
+.balanceValue {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-top: 1px;
+}
+.balanceLimits {
+  text-align: right;
+}
+.balanceLimitRow {
+  font-size: 11px;
+  color: #60607a;
+  line-height: 1.6;
+}
+.balanceLimitValue {
+  color: #a0a0c0;
+  font-weight: 600;
+}
+
+/* ── Form card ── */
+.formCard {
+  background: #0f1527;
+  border: 1px solid #1e2d4d;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── Amount input ── */
+.amountWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #c8c8e8;
+}
+.amountRow {
+  display: flex;
+  align-items: center;
+  background: #141e35;
+  border: 1px solid #1e2d4d;
+  border-radius: 12px;
+  padding: 0 14px;
+  transition: border-color 0.15s ease;
+}
+.amountRow:focus-within { border-color: #3a4d7a; }
+.currencySymbol {
+  font-size: 18px;
+  font-weight: 700;
+  color: #60607a;
+  padding-right: 4px;
+  flex-shrink: 0;
+}
+.amountInput {
+  flex: 1;
+  height: 50px;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.amountInput::placeholder { color: #3e4060; font-size: 18px; font-weight: 400; }
+.amountHint {
+  font-size: 12px;
+  color: #60607a;
+  display: flex;
+  justify-content: space-between;
+}
+.amountHintWarn { color: #e8a032; }
+
+/* ── Review warning ── */
+.reviewWarning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(232, 160, 50, 0.07);
+  border: 1px solid rgba(232, 160, 50, 0.25);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #e8a032;
+  line-height: 1.5;
+}
+
+/* ── Bank account info row ── */
+.bankInfoRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #141e35;
+  border: 1px solid #1e2d4d;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.bankInfoIcon { font-size: 20px; flex-shrink: 0; }
+.bankInfoText {
+  flex: 1;
+  min-width: 0;
+}
+.bankInfoName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bankInfoSub {
+  font-size: 11px;
+  color: #60607a;
+  margin-top: 2px;
+}
+
+/* ── Submit button ── */
+.submitBtn {
+  width: 100%;
+  height: 52px;
+  border-radius: 999px;
+  background: #c9a028;
+  color: #0a0a1a;
+  font-size: 16px;
+  font-weight: 800;
+  transition: opacity 0.15s ease;
+}
+.submitBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.submitBtn:active:not(:disabled) { opacity: 0.85; }
+
+/* ── Empty states ── */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 60px 24px;
+  text-align: center;
+  flex: 1;
+}
+.emptyIcon { font-size: 52px; }
+.emptyTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+}
+.emptySub {
+  font-size: 14px;
+  color: #60607a;
+  line-height: 1.5;
+  max-width: 240px;
+}
+.emptyBtn {
+  margin-top: 4px;
+  padding: 12px 32px;
+  border-radius: 999px;
+  background: #c9a028;
+  color: #0a0a1a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ── Status screen ── */
+.statusScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 20px 16px 40px;
+  height: 100%;
+  overflow-y: auto;
+  background: #0a0a1a;
+  scrollbar-width: none;
+}
+.statusScreen::-webkit-scrollbar { display: none; }
+
+.statusHero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 0 24px;
+  text-align: center;
+}
+.statusIconWrap {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes popIn {
+  from { transform: scale(0.4); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.statusIconPending  { background: rgba(201, 160, 40, 0.12); }
+.statusIconProcess  { background: rgba(61, 130, 220, 0.12); }
+.statusIconSuccess  { background: rgba(61, 232, 138, 0.12); }
+.statusIconFail     { background: rgba(232, 61, 61, 0.12);  }
+
+.statusTitle {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+}
+.statusAmount {
+  font-size: 32px;
+  font-weight: 800;
+  color: #c9a028;
+}
+.statusBank {
+  font-size: 14px;
+  color: #60607a;
+}
+
+/* ── Status detail card ── */
+.statusCard {
+  width: 100%;
+  background: #0f1527;
+  border: 1px solid #1e2d4d;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.statusRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+.statusRowLabel { color: #60607a; flex-shrink: 0; }
+.statusRowValue { color: #ffffff; font-weight: 600; text-align: right; }
+
+/* Status badge pill */
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.pillPendingReview { background: rgba(201, 160, 40, 0.15); color: #c9a028; }
+.pillPending       { background: rgba(100, 140, 220, 0.15); color: #7aabff; }
+.pillProcessing    { background: rgba(61, 130, 220, 0.15); color: #5b9aff; }
+.pillCompleted     { background: rgba(61, 232, 138, 0.15); color: #3de88a; }
+.pillFailed        { background: rgba(232, 61, 61, 0.15); color: #e83d3d; }
+.pillRejected      { background: rgba(232, 61, 61, 0.15); color: #e83d3d; }
+.pillCancelled     { background: rgba(100, 100, 130, 0.15); color: #7a7a9a; }
+
+.statusDivider {
+  height: 1px;
+  background: #1e2d4d;
+  width: 100%;
+}
+
+.statusNote {
+  font-size: 13px;
+  color: #60607a;
+  text-align: center;
+  line-height: 1.5;
+  padding: 0 8px;
+}
+.statusNoteWarn { color: #e8a032; }
+.statusNoteError { color: #e83d3d; }
+
+/* ── Status actions ── */
+.statusActions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+.primaryBtn {
+  width: 100%;
+  height: 52px;
+  border-radius: 999px;
+  background: #c9a028;
+  color: #0a0a1a;
+  font-size: 16px;
+  font-weight: 800;
+}
+.primaryBtn:active { opacity: 0.85; }
+.cancelBtn {
+  width: 100%;
+  height: 48px;
+  border-radius: 999px;
+  background: none;
+  border: 1.5px solid rgba(232, 61, 61, 0.4);
+  color: #e83d3d;
+  font-size: 14px;
+  font-weight: 600;
+  transition: opacity 0.15s ease;
+}
+.cancelBtn:active { opacity: 0.75; }
+.cancelBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Polling indicator */
+.pollingRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #60607a;
+}
+.pollingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #60607a;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50%       { opacity: 1;   transform: scale(1.1); }
+}
