@@ -1,20 +1,21 @@
 import { useEffect, useState, useCallback } from 'react'
-import { wallet, kyc } from '@/api/endpoints'
+import { useNavigate } from 'react-router-dom'
+import { wallet, kyc, withdrawals as withdrawalsApi } from '@/api/endpoints'
 import { useWalletStore } from '@/store/walletStore'
 import { formatNaira, formatCoins, formatDate } from '@/lib/format'
 import { FundWalletModal } from '@/components/FundWalletModal/FundWalletModal'
-import { WithdrawModal } from '@/components/WithdrawModal/WithdrawModal'
-import type { TransactionRecord, KYCStatusResponse } from '@/types'
+import type { TransactionRecord, KYCStatusResponse, WithdrawalRecord, WithdrawalStatus } from '@/types'
 import styles from './WalletPage.module.css'
 
 export function WalletPage() {
+  const navigate = useNavigate()
   const { coinBalance, cashBalance, stakedBalance, setBalance } = useWalletStore()
   const [transactions, setTransactions] = useState<TransactionRecord[]>([])
+  const [recentWithdrawals, setRecentWithdrawals] = useState<WithdrawalRecord[]>([])
   const [kycStatus, setKycStatus] = useState<KYCStatusResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showFund, setShowFund] = useState(false)
-  const [showWithdraw, setShowWithdraw] = useState(false)
 
   const loadData = useCallback(() => {
     setIsLoading(true)
@@ -22,7 +23,8 @@ export function WalletPage() {
       wallet.balance(),
       wallet.transactions(1, 20),
       kyc.status(),
-    ]).then(([balanceResult, txResult, kycResult]) => {
+      withdrawalsApi.list(1),
+    ]).then(([balanceResult, txResult, kycResult, wdResult]) => {
       if (balanceResult.status === 'fulfilled') {
         const b = balanceResult.value
         setBalance(b.coin_balance, b.cash_balance, b.staked_balance)
@@ -37,6 +39,12 @@ export function WalletPage() {
 
       if (kycResult.status === 'fulfilled') {
         setKycStatus(kycResult.value)
+      }
+
+      if (wdResult.status === 'fulfilled') {
+        const d = wdResult.value
+        const list = Array.isArray(d) ? d : (d?.results ?? [])
+        setRecentWithdrawals(list.slice(0, 5))
       }
 
       const allFailed = [balanceResult, txResult, kycResult].every(
@@ -54,11 +62,6 @@ export function WalletPage() {
 
   const handleFundSuccess = useCallback(() => {
     setShowFund(false)
-    loadData()
-  }, [loadData])
-
-  const handleWithdrawSuccess = useCallback(() => {
-    setShowWithdraw(false)
     loadData()
   }, [loadData])
 
@@ -81,7 +84,7 @@ export function WalletPage() {
   }
 
   const kycApproved = kycStatus?.overall_status === 'approved'
-  const canWithdraw = (kycApproved || kycStatus?.can_withdraw === true) && parseFloat(cashBalance ?? '0') >= 2000
+  const canWithdraw = (kycApproved || kycStatus?.can_withdraw === true) && parseFloat(cashBalance ?? '0') > 0
 
   return (
     <>
@@ -119,7 +122,7 @@ export function WalletPage() {
             </div>
             <button
               className={`${styles.cardAction} ${!canWithdraw ? styles.cardActionDisabled : ''}`}
-              onClick={() => canWithdraw && setShowWithdraw(true)}
+              onClick={() => canWithdraw && navigate('/withdraw')}
               disabled={!canWithdraw}
             >
               Withdraw
@@ -156,9 +159,49 @@ export function WalletPage() {
                     : 'Verify your identity to unlock cash withdrawals.'}
               </p>
             </div>
-            <button className={styles.kycBtn} onClick={() => window.location.assign('/kyc')}>
+            <button className={styles.kycBtn} onClick={() => navigate('/kyc')}>
               {kycStatus?.overall_status === 'partial' ? 'Fix Now' : 'Verify Now'}
             </button>
+          </div>
+        )}
+
+        {/* ── Withdrawal History ── */}
+        {recentWithdrawals.length > 0 && (
+          <div className={styles.section}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h2 className={styles.sectionTitle}>Withdrawals</h2>
+              <button
+                style={{ fontSize: 12, color: '#c9a028', fontWeight: 600 }}
+                onClick={() => navigate('/withdraw')}
+              >
+                New →
+              </button>
+            </div>
+            <div className={styles.txList}>
+              {recentWithdrawals.map((wd) => (
+                <div key={wd.id} className={styles.txRow}>
+                  <div className={styles.txIconWrap}>
+                    <span className={styles.txIcon}>{getWdIcon(wd.status)}</span>
+                  </div>
+                  <div className={styles.txMeta}>
+                    <p className={styles.txDescription}>
+                      {wd.bank_account
+                        ? `${wd.bank_account.bank_name} ${wd.bank_account.account_number_masked}`
+                        : 'Bank Withdrawal'}
+                    </p>
+                    <p className={styles.txDate}>{formatDate(wd.requested_at)}</p>
+                  </div>
+                  <div className={styles.txAmountWrap}>
+                    <p className={`${styles.txAmount} ${styles.txDebit}`}>
+                      -{formatNaira(wd.amount)}
+                    </p>
+                    <p className={`${styles.txStatus} ${getWdStatusClass(wd.status, styles)}`}>
+                      {getWdStatusLabel(wd.status)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -205,13 +248,6 @@ export function WalletPage() {
           onSuccess={handleFundSuccess}
         />
       )}
-      {showWithdraw && (
-        <WithdrawModal
-          cashBalance={cashBalance}
-          onClose={() => setShowWithdraw(false)}
-          onSuccess={handleWithdrawSuccess}
-        />
-      )}
     </>
   )
 }
@@ -245,4 +281,34 @@ function formatTxType(type: string): string {
     case 'referral_bonus': return 'Referral Bonus'
     default:               return type.replace(/_/g, ' ')
   }
+}
+
+function getWdIcon(status: WithdrawalStatus): string {
+  switch (status) {
+    case 'completed':     return '✅'
+    case 'failed':
+    case 'rejected':      return '❌'
+    case 'cancelled':     return '↩️'
+    case 'processing':    return '🏦'
+    default:              return '⏳'
+  }
+}
+
+function getWdStatusLabel(status: WithdrawalStatus): string {
+  switch (status) {
+    case 'pending_review': return 'Pending review'
+    case 'pending':        return 'Queued'
+    case 'processing':     return 'Processing'
+    case 'completed':      return 'Sent'
+    case 'failed':         return 'Failed'
+    case 'rejected':       return 'Rejected'
+    case 'cancelled':      return 'Cancelled'
+    default:               return status
+  }
+}
+
+function getWdStatusClass(status: WithdrawalStatus, s: Record<string, string>): string {
+  if (status === 'completed') return s.txStatus_completed
+  if (status === 'failed' || status === 'rejected') return s.txStatus_failed
+  return s.txStatus_pending
 }

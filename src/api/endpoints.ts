@@ -10,8 +10,8 @@ import type {
   DepositRecord,
   VirtualAccount,
   PaginatedResponse,
-  WithdrawalRequest,
   WithdrawalRecord,
+  WithdrawalLimits,
   KYCStatusResponse,
   KYCBank,
   KYCDocumentUploadResponse,
@@ -138,13 +138,37 @@ export const referrals = {
 
 // Withdrawals
 export const withdrawals = {
-  request: (payload: WithdrawalRequest): Promise<WithdrawalRecord> =>
-    apiClient
-      .post<WithdrawalRecord>('/withdrawals/', payload)
-      .then((r) => r.data),
+  /** Current limits + live balance. Call first when opening the withdraw screen. */
+  limits: (): Promise<WithdrawalLimits> =>
+    apiClient.get('/withdrawals/limits/').then((r) => r.data?.data ?? r.data),
 
-  list: (): Promise<WithdrawalRecord[]> =>
-    apiClient.get<WithdrawalRecord[]>('/withdrawals/').then((r) => r.data),
+  /**
+   * Request a withdrawal. `forceManualReview` routes to the /manual-review/ endpoint
+   * (admin always reviews, regardless of amount). Set to false to use the tiered auto-flow.
+   * Currently defaulting to true (pre-launch mode) — flip to false when ready.
+   */
+  request: (amount: string, forceManualReview = true): Promise<WithdrawalRecord> => {
+    const endpoint = forceManualReview
+      ? '/withdrawals/manual-review/'
+      : '/withdrawals/'
+    return apiClient.post(endpoint, { amount }).then((r) => r.data?.data ?? r.data)
+  },
+
+  /** Paginated withdrawal history, newest first. */
+  list: (page = 1): Promise<PaginatedResponse<WithdrawalRecord>> =>
+    apiClient
+      .get('/withdrawals/list/', { params: { page } })
+      .then((r) => r.data?.data ?? r.data),
+
+  /** Get a single withdrawal — use for status polling. */
+  get: (id: string): Promise<WithdrawalRecord> =>
+    apiClient.get(`/withdrawals/${id}/`).then((r) => r.data?.data ?? r.data),
+
+  /** Cancel a withdrawal. Only valid when status === 'pending_review'. */
+  cancel: (id: string): Promise<WithdrawalRecord> =>
+    apiClient
+      .post(`/withdrawals/${id}/cancel/`)
+      .then((r) => r.data?.data ?? r.data),
 }
 
 // KYC
