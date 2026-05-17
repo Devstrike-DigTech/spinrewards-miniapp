@@ -1,41 +1,116 @@
 /* ── User card ── */
 .userCard {
-  display: flex;
-  align-items: center;
-  gap: 14px;
   background: #0f1527;
   border: 1px solid #1e2d4d;
-  border-radius: 16px;
-  padding: 16px;
+  border-radius: 18px;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.avatarWrap {
+  position: relative;
 }
 
 .avatar {
-  width: 52px;
-  height: 52px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   background: linear-gradient(135deg, #1a237e, #c9961a);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 800;
   color: #ffffff;
   flex-shrink: 0;
+  border: 3px solid rgba(201, 160, 40, 0.3);
 }
 
 .userName {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 800;
   color: #ffffff;
 }
 
-.userHandle {
+.kycVerified {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
-  color: #60607a;
-  margin-top: 2px;
+  font-weight: 600;
+  color: #3de88a;
 }
 
-/* ── KYC card ── */
+.kycVerifiedDot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #3de88a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 900;
+  color: #0a0a1a;
+}
+
+.kycPending {
+  color: #e8c93d;
+}
+
+.kycPendingDot {
+  background: #e8c93d;
+  color: #0a0a1a;
+}
+
+.kycUnverified {
+  color: #60607a;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Stats row ── */
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.statBox {
+  background: #0f1527;
+  border: 1px solid #1e2d4d;
+  border-radius: 12px;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.statValue {
+  font-size: 15px;
+  font-weight: 800;
+  color: #c9a028;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.statLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: #60607a;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* ── KYC card (action) ── */
 .kycCard {
   display: flex;
   align-items: center;
@@ -141,6 +216,149 @@
   color: #c9a028;
   letter-spacing: 0.5px;
 }
+
+/* ── Referral code card ── */
+.referralCard {
+  background: #0f1527;
+  border: 1px dashed rgba(201, 160, 40, 0.4);
+  border-radius: 18px;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.referralCardTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.referralCode {
+  font-size: 24px;
+  font-weight: 900;
+  color: #c9a028;
+  letter-spacing: 2px;
+  text-align: center;
+  font-family: 'Courier New', monospace;
+}
+
+.referralBullets {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0 2px;
+}
+
+.referralBullet {
+  font-size: 12px;
+  color: #a0a0c0;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  line-height: 1.4;
+}
+
+.referralBulletDot {
+  color: #c9a028;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.shareBtn {
+  width: 100%;
+  height: 48px;
+  border-radius: 14px;
+  background: #c9a028;
+  color: #0a0a1a;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.15s ease;
+}
+.shareBtn:active { opacity: 0.8; }
+
+/* ── Settings card ── */
+.settingsCard {
+  background: #0f1527;
+  border: 1px solid #1e2d4d;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.settingsTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  padding: 14px 16px 12px;
+}
+
+.settingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-top: 1px solid #1e2d4d;
+}
+
+.settingLabel {
+  font-size: 14px;
+  color: #e0e0f0;
+  font-weight: 500;
+}
+
+/* Toggle switch */
+.toggle {
+  width: 48px;
+  height: 28px;
+  border-radius: 999px;
+  background: #1e2d4d;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.toggleOn {
+  background: #c9a028;
+}
+
+.toggleKnob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.toggleOn .toggleKnob {
+  transform: translateX(20px);
+}
+
+/* ── Logout button ── */
+.logoutBtn {
+  width: 100%;
+  height: 52px;
+  border-radius: 14px;
+  background: #c9a028;
+  color: #0a0a1a;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.15s ease;
+  margin-top: 4px;
+}
+.logoutBtn:active { opacity: 0.8; }
 
 /* ── Outline button ── */
 .outlineBtn {

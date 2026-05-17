@@ -18,6 +18,9 @@ import type {
   KYCSubmitPayload,
   DailyRewardStatus,
   User,
+  Challenge,
+  MyCodeData,
+  MyReferralsData,
 } from '@/types'
 
 // Auth
@@ -134,6 +137,24 @@ export const spin = {
 export const referrals = {
   info: (): Promise<ReferralInfo> =>
     apiClient.get<ReferralInfo>('/referrals/').then((r) => r.data),
+
+  myCode: (): Promise<MyCodeData> =>
+    apiClient.get('/referrals/my-code/').then((r) => r.data?.data ?? r.data),
+
+  myReferrals: (): Promise<MyReferralsData> =>
+    apiClient.get('/referrals/my-referrals/').then((r) => r.data?.data ?? r.data),
+
+  apply: (code: string): Promise<{ message: string; referral_id: string; referrer_name: string }> =>
+    apiClient.post('/referrals/apply/', { code }).then((r) => r.data?.data ?? r.data),
+}
+
+// Challenges
+export const challenges = {
+  list: (): Promise<{ challenges: Challenge[] }> =>
+    apiClient.get('/challenges/').then((r) => r.data?.data ?? r.data),
+
+  get: (id: string): Promise<Challenge> =>
+    apiClient.get(`/challenges/${id}/`).then((r) => r.data?.data ?? r.data),
 }
 
 // Withdrawals
