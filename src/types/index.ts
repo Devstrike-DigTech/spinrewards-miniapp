@@ -256,6 +256,79 @@ export interface DailyRewardStatus {
   hours_until_next: number | null
 }
 
+// Challenges (player-facing)
+export interface ChallengeProgress {
+  current_count: number
+  target_count: number
+  progress_pct: number
+  is_completed: boolean
+  completed_at: string | null
+  reward_claimed: boolean
+  reward_claimed_at: string | null
+  window_start: string
+  window_end: string | null
+}
+
+export interface Challenge {
+  id: string
+  name: string
+  description: string
+  type: string
+  recurrence: string
+  criteria: Record<string, unknown>
+  reward: {
+    type: string   // 'coins' | 'cash' | 'free_spins' | 'multiplier_boost'
+    amount: number
+  }
+  is_active: boolean
+  is_visible: boolean
+  max_completions_per_user: number | null
+  starts_at: string | null
+  expires_at: string | null
+  created_at: string
+  participant_count: number
+  completion_count: number
+  my_progress: ChallengeProgress | null
+}
+
+// Referrals (player-facing)
+export interface MyCodeData {
+  code: string
+  share_url: string
+  stats: {
+    total_referrals: number
+    pending: number
+    qualified: number
+    rewarded: number
+  }
+}
+
+export interface MyReferralEntry {
+  id: string
+  referred_user: {
+    id: string
+    name: string
+    telegram_id: number
+  }
+  status: 'pending' | 'qualified' | 'rewarded' | 'rejected'
+  qualified_at: string | null
+  rewarded_at: string | null
+  created_at: string
+}
+
+export interface MyReferralsData {
+  stats: {
+    total_referrals: number
+    pending: number
+    qualified: number
+    rewarded: number
+  }
+  count: number
+  next: string | null
+  previous: string | null
+  referrals: MyReferralEntry[]
+}
+
 // API error shape
 export interface APIError {
   error: string
