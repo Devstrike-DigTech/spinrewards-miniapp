@@ -1,7 +1,32 @@
 import { useEffect, useState } from 'react'
-import { auth, users } from '@/api/endpoints'
+import { auth, users, referrals } from '@/api/endpoints'
 import { useAuthStore } from '@/store/authStore'
 import { useTelegram } from './useTelegram'
+
+const REFERRAL_APPLIED_KEY = 'sr_referral_applied'
+
+async function tryApplyReferralCode() {
+  // Only attempt once per device — backend also enforces one-per-user,
+  // but this avoids a pointless network call on every subsequent launch.
+  if (localStorage.getItem(REFERRAL_APPLIED_KEY)) return
+
+  try {
+    const tg = (window as { Telegram?: { WebApp?: { initDataUnsafe?: { start_param?: string } } } })
+      .Telegram?.WebApp
+    const startParam = tg?.initDataUnsafe?.start_param
+
+    if (startParam && startParam.startsWith('SPIN-')) {
+      await referrals.apply(startParam)
+      console.log('[Referral] Code applied:', startParam)
+    }
+  } catch {
+    // Silently ignore — backend returns 400 if code already used,
+    // user applied their own code, or they already have a referral.
+  } finally {
+    // Mark as attempted regardless of outcome so we never retry.
+    localStorage.setItem(REFERRAL_APPLIED_KEY, 'true')
+  }
+}
 
 export function useAuth() {
   const [isLoading, setIsLoading] = useState(true)
@@ -99,6 +124,10 @@ export function useAuth() {
         if (cancelled) return
         setAuth(authUser, authTokens)
         setTokens(authTokens)
+
+        // Fresh login — attempt to apply a referral code from the deep link.
+        // Fire-and-forget: we don't await so it never delays the app loading.
+        tryApplyReferralCode()
       } catch (err) {
         console.error('[Auth] Failed:', err)
         if (!cancelled) {
