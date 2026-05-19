@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { deposits } from '@/api/endpoints'
 import { pollDeposit } from '@/lib/pollDeposit'
 import type { DepositRecord } from '@/types'
@@ -85,6 +85,43 @@ export function FundWalletModal({ onClose, onSuccess }: Props) {
       setStage('error')
     }
   }, [deposit, onSuccess])
+
+  // Auto-check the moment the user returns to the mini app after visiting
+  // the Paystack checkout page. We use both the Page Visibility API and
+  // Telegram's own 'activated' event so it works across all platforms.
+  // A ref guards against double-firing if both events trigger together.
+  const autoCheckFired = useRef(false)
+
+  useEffect(() => {
+    if (stage !== 'paystack-pending') return
+
+    autoCheckFired.current = false // reset guard when entering pending state
+
+    function triggerCheck() {
+      if (autoCheckFired.current) return
+      autoCheckFired.current = true
+      // Small delay: gives Paystack's webhook time to hit the backend
+      // before we start polling, avoiding a false "still pending" result.
+      setTimeout(() => handleCheckPaystack(), 1500)
+    }
+
+    // Standard browser visibility event — fires when user switches back
+    // from Telegram's in-app browser to the mini app.
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') triggerCheck()
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    // Telegram SDK event — more reliable on some platforms
+    const tg = (window as { Telegram?: { WebApp?: { onEvent?: (event: string, cb: () => void) => void; offEvent?: (event: string, cb: () => void) => void } } }).Telegram?.WebApp
+    tg?.onEvent?.('activated', triggerCheck)
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      tg?.offEvent?.('activated', triggerCheck)
+    }
+  }, [stage, handleCheckPaystack])
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).catch(() => {})
