@@ -241,6 +241,11 @@ export function SpinPage() {
     sounds.startSpin()
   }, [])
 
+  // Called by SpinEngine each time the pointer crosses a segment boundary
+  const handleTick = useCallback(() => {
+    haptic.impactOccurred('light')
+  }, [haptic])
+
   // Called by SpinEngine after animation fully completes (min 5 s)
   const handleAnimationDone = useCallback(() => {
     sounds.stopSpin()
@@ -443,11 +448,13 @@ export function SpinPage() {
 
             {/* Wheel canvas */}
             <div className={styles.wheelWrapper}>
+              <div className={styles.wheelAmbient} />
               <SpinWheel
                 key={wheelKey}
                 segments={segments}
                 onSpinComplete={handleAnimationDone}
                 onSpinStart={handleSpinStart}
+                onTick={handleTick}
                 engineRef={engineRef}
               />
 
