@@ -77,6 +77,7 @@ function Section({
         <span className={styles.sectionTitle}>{title}</span>
       </div>
 
+      {/* Error/correction reason */}
       {(status === 'requires_correction' || status === 'rejected') && reason && (
         <div className={`${styles.sectionReason} ${status === 'rejected' ? styles.sectionRejectedReason : ''}`}>
           <span>⚠</span>
@@ -84,7 +85,17 @@ function Section({
         </div>
       )}
 
-      {children}
+      {/* Verified: show confirmation row, hide form fields */}
+      {status === 'verified' ? (
+        <div className={styles.sectionVerifiedContent}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <span>This section has been verified</span>
+        </div>
+      ) : (
+        children
+      )}
     </div>
   )
 }
@@ -274,35 +285,54 @@ export function KYCPage() {
     }
   }
 
-  // ── Form readiness ────────────────────────────────────────────────────────
-  const isReady =
+  // ── Derive section statuses (needed here for isReady / submit) ───────────
+  const ps = kycStatus?.personal_info_status  ?? 'pending'
+  const bs = kycStatus?.bank_account_status   ?? 'pending'
+  const ds = kycStatus?.document_status       ?? 'pending'
+
+  // ── Form readiness — only require fields for non-verified sections ────────
+  const personalInfoReady = ps === 'verified' || (
     fullName.trim().length >= 2 &&
     nin.length === 11 &&
     bvn.length === 11 &&
-    dob !== '' &&
+    dob !== ''
+  )
+  const bankReady = bs === 'verified' || (
     bankCode !== '' &&
     accountNo.length === 10 &&
     resolvedName !== '' &&
-    !resolvingBank &&
-    uploadedDoc !== null
+    !resolvingBank
+  )
+  const docReady = ds === 'verified' || uploadedDoc !== null
 
-  // ── Submit ────────────────────────────────────────────────────────────────
+  const isReady = personalInfoReady && bankReady && docReady
+
+  // ── Submit — only include payload fields for non-verified sections ─────────
   async function handleSubmit() {
-    if (!isReady || submitting || !uploadedDoc) return
+    if (!isReady || submitting) return
     setSubmitting(true)
     setSubmitError('')
 
+    // Build payload selectively — don't re-submit already-verified sections
+    const payload: Record<string, unknown> = {}
+
+    if (ps !== 'verified') {
+      payload.full_name = fullName.trim()
+      payload.nin = nin
+      payload.bvn = bvn
+      payload.date_of_birth = dob
+      if (phone.trim()) payload.phone_number = phone.trim()
+    }
+    if (bs !== 'verified') {
+      payload.bank_code = bankCode
+      payload.account_number = accountNo
+    }
+    if (ds !== 'verified' && uploadedDoc) {
+      payload.document_id = uploadedDoc.id
+    }
+
     try {
-      const newStatus = await kycApi.submit({
-        full_name: fullName.trim(),
-        nin,
-        bvn,
-        date_of_birth: dob,
-        phone_number: phone.trim() || undefined,
-        bank_code: bankCode,
-        account_number: accountNo,
-        document_id: uploadedDoc.id,
-      })
+      const newStatus = await kycApi.submit(payload)
       setKycStatus(newStatus)
       haptic.notificationOccurred('success')
 
@@ -358,11 +388,6 @@ export function KYCPage() {
       </div>
     )
   }
-
-  // ── Derive section statuses ───────────────────────────────────────────────
-  const ps = kycStatus?.personal_info_status  ?? 'pending'
-  const bs = kycStatus?.bank_account_status   ?? 'pending'
-  const ds = kycStatus?.document_status       ?? 'pending'
 
   // ── Render: main form ─────────────────────────────────────────────────────
   return (
