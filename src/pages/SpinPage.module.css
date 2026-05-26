@@ -170,15 +170,34 @@
   50%      { box-shadow: 0 0 12px rgba(201,160,40,0.3); }
 }
 
-/* Wheel wrapper — fixed square so it never overflows into the stake row */
+/* Wheel wrapper — responsive square that never overflows into the stake row */
 .wheelWrapper {
   position: relative;
-  width: 200px;
-  height: 200px;
+  width: min(270px, calc(100vw - 56px));
+  aspect-ratio: 1;
   flex-shrink: 0;
   margin: 0 auto;
 }
-.wheelWrapper canvas { width: 100% !important; height: 100% !important; }
+.wheelWrapper canvas {
+  position: relative;
+  z-index: 1;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.wheelAmbient {
+  position: absolute;
+  inset: -28px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201,150,26,0.20) 0%, rgba(201,150,26,0.05) 50%, transparent 70%);
+  animation: ambientPulse 3.5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes ambientPulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.93); }
+  50%       { opacity: 1;    transform: scale(1.07); }
+}
 
 .wheelOverlay {
   position: absolute;

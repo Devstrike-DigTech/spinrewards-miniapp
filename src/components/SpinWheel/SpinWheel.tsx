@@ -7,6 +7,7 @@ interface SpinWheelProps {
   segments?: WheelSegment[]
   onSpinComplete?: (segmentIndex: number) => void
   onSpinStart?: () => void
+  onTick?: () => void   // fires each time pointer crosses a segment boundary
   engineRef?: React.MutableRefObject<SpinEngine | null>
 }
 
@@ -14,6 +15,7 @@ export function SpinWheel({
   segments = DEFAULT_SEGMENTS,
   onSpinComplete,
   onSpinStart,
+  onTick,
   engineRef,
 }: SpinWheelProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -25,8 +27,10 @@ export function SpinWheel({
   // stale closures — spinResult would always be null inside handleAnimationDone.
   const onSpinCompleteRef = useRef(onSpinComplete)
   const onSpinStartRef    = useRef(onSpinStart)
+  const onTickRef         = useRef(onTick)
   useEffect(() => { onSpinCompleteRef.current = onSpinComplete }, [onSpinComplete])
   useEffect(() => { onSpinStartRef.current    = onSpinStart    }, [onSpinStart])
+  useEffect(() => { onTickRef.current         = onTick         }, [onTick])
 
   useEffect(() => {
     if (!canvasRef.current) return
@@ -36,6 +40,7 @@ export function SpinWheel({
       segments,
       onSpinComplete: (idx) => onSpinCompleteRef.current?.(idx),
       onSpinStart:    ()    => onSpinStartRef.current?.(),
+      onTick:         ()    => onTickRef.current?.(),
     })
 
     engine.init(canvasRef.current)

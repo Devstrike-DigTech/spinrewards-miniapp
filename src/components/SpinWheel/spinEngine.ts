@@ -13,6 +13,7 @@ interface SpinEngineOptions {
   segments: VisualSegment[]
   onSpinComplete?: (segmentIndex: number) => void
   onSpinStart?: () => void
+  onTick?: () => void   // fires each time pointer crosses a segment boundary
 }
 
 export class SpinEngine {
@@ -25,6 +26,8 @@ export class SpinEngine {
   private isSpinning = false
   private onSpinComplete?: (idx: number) => void
   private onSpinStart?: () => void
+  private onTick?: () => void
+  private pointerGraphics: Graphics | null = null
   private initialized = false
   private destroyed = false
   private glowTween: gsap.core.Tween | null = null
@@ -33,6 +36,7 @@ export class SpinEngine {
     this.segments = options.segments
     this.onSpinComplete = options.onSpinComplete
     this.onSpinStart = options.onSpinStart
+    this.onTick = options.onTick
     this.app = new Application()
     this.wheelContainer = new Container()
   }
@@ -73,13 +77,21 @@ export class SpinEngine {
     const segCount = this.segments.length
     const segAngle = (Math.PI * 2) / segCount
 
-    // ── Outer metallic ring (5 layers for depth) ───────────────────────────
+    // ── Outer ambient glow (behind everything, add at index 0) ────────────
+    const glow = new Graphics()
+    glow.circle(0, 0, R + 36).fill({ color: 0xc9961a, alpha: 0.06 })
+    glow.circle(0, 0, R + 30).fill({ color: 0xc9961a, alpha: 0.10 })
+    glow.circle(0, 0, R + 24).fill({ color: 0xc9961a, alpha: 0.14 })
+    this.wheelContainer.addChild(glow)
+
+    // ── Gold ring layers ───────────────────────────────────────────────────
     const outerRing = new Graphics()
-    outerRing.circle(0, 0, R + 18).fill({ color: 0xd4d9e2 }) // lightest silver
-    outerRing.circle(0, 0, R + 14).fill({ color: 0xa8b4c0 }) // mid silver
-    outerRing.circle(0, 0, R + 10).fill({ color: 0xc8cdd6 }) // highlight band
-    outerRing.circle(0, 0, R +  6).fill({ color: 0x7a8fa8 }) // dark inner groove
-    outerRing.circle(0, 0, R +  3).fill({ color: 0xb0bcc8 }) // inner lip
+    outerRing.circle(0, 0, R + 20).fill({ color: 0x1a0e00 }) // dark shadow outer edge
+    outerRing.circle(0, 0, R + 18).fill({ color: 0x6b3d00 }) // dark gold
+    outerRing.circle(0, 0, R + 14).fill({ color: 0xc9961a }) // rich gold
+    outerRing.circle(0, 0, R + 10).fill({ color: 0xf5c322 }) // bright gold highlight
+    outerRing.circle(0, 0, R +  6).fill({ color: 0xe8a800 }) // warm gold
+    outerRing.circle(0, 0, R +  3).fill({ color: 0x8a5c00 }) // dark inner rim
     this.wheelContainer.addChild(outerRing)
 
     // ── Segments ──────────────────────────────────────────────────────────
@@ -96,15 +108,14 @@ export class SpinEngine {
       slice.fill({ color: seg.color })
       this.wheelContainer.addChild(slice)
 
-      // ── Gloss arc highlight on outer rim of each segment ──────────────
-      if (seg.showCoin) {
-        // Bright arc at rim for a "shiny" look on win segments
-        const gloss = new Graphics()
-        gloss.moveTo(Math.cos(startAngle + 0.04) * (R * 0.88), Math.sin(startAngle + 0.04) * (R * 0.88))
-        gloss.arc(0, 0, R * 0.92, startAngle + 0.04, endAngle - 0.04)
-        gloss.stroke({ color: 0xffffff, width: 2, alpha: 0.22 })
-        this.wheelContainer.addChild(gloss)
-      }
+      // ── Subtle rim highlight on each segment ──────────────────────────
+      const highlight = new Graphics()
+      highlight.moveTo(Math.cos(startAngle + 0.05) * (R * 0.78), Math.sin(startAngle + 0.05) * (R * 0.78))
+      highlight.arc(0, 0, R * 0.90, startAngle + 0.05, endAngle - 0.05)
+      highlight.arc(0, 0, R * 0.78, endAngle - 0.05, startAngle + 0.05, true)
+      highlight.closePath()
+      highlight.fill({ color: 0xffffff, alpha: 0.07 })
+      this.wheelContainer.addChild(highlight)
 
       // Divider line between segments
       const line = new Graphics()
@@ -166,9 +177,6 @@ export class SpinEngine {
       lbl.y = Math.sin(midAngle) * textDist
 
       // Compute rotation so text always reads outward from centre.
-      // midAngle + π/2 gives the correct angle for top-half segments, but for
-      // bottom-half segments (sin(midAngle) > 0 in Pixi's y-down coords) this
-      // pushes past 180° and the label ends up upside-down — so add π to flip it.
       let textRot = midAngle + Math.PI / 2
       const normMid = ((midAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)
       if (normMid > Math.PI / 2 && normMid < Math.PI * 1.5) {
@@ -178,20 +186,32 @@ export class SpinEngine {
       this.wheelContainer.addChild(lbl)
     })
 
-    // ── Decorative dots at segment boundaries ──────────────────────────────
+    // ── Decorative gold diamond pins at segment boundaries ─────────────────
     for (let i = 0; i < segCount; i++) {
       const a = i * segAngle - Math.PI / 2
-      // Outer gold dot
-      const dot = new Graphics()
-      dot.circle(Math.cos(a) * (R + 7), Math.sin(a) * (R + 7), 5.5)
-      dot.fill({ color: 0xf5c322 })
-      this.wheelContainer.addChild(dot)
-      // Inner white highlight
-      const dotHi = new Graphics()
-      dotHi.circle(Math.cos(a) * (R + 7), Math.sin(a) * (R + 7), 2.5)
-      dotHi.fill({ color: 0xffffff, alpha: 0.9 })
-      this.wheelContainer.addChild(dotHi)
+      const px = Math.cos(a) * (R + 10)
+      const py = Math.sin(a) * (R + 10)
+
+      const pin = new Graphics()
+      // Outer shadow
+      pin.circle(px, py, 7).fill({ color: 0x000000, alpha: 0.45 })
+      // Dark gold rim
+      pin.circle(px, py, 6).fill({ color: 0x6b3d00 })
+      // Bright gold face
+      pin.circle(px, py, 5).fill({ color: 0xf5c322 })
+      // White glint
+      pin.circle(px - 1.5, py - 1.8, 2).fill({ color: 0xffffff, alpha: 0.75 })
+      this.wheelContainer.addChild(pin)
     }
+
+    // ── 3D dome light — simulates overhead lighting on a convex surface ────
+    const dome = new Graphics()
+    // Top-half white crescent
+    dome.arc(0, 0, R * 0.95, -Math.PI * 0.9, -Math.PI * 0.1)
+    dome.arc(0, 0, R * 0.40, -Math.PI * 0.1, -Math.PI * 0.9, true)
+    dome.closePath()
+    dome.fill({ color: 0xffffff, alpha: 0.06 })
+    this.wheelContainer.addChild(dome)
 
     // ── Inner metallic hub ring ─────────────────────────────────────────────
     const hub = new Graphics()
@@ -238,37 +258,67 @@ export class SpinEngine {
 
   private drawPointer() {
     const R = this.radius
+    const cx = this.wheelContainer.x
+    const cy = this.wheelContainer.y
 
-    // Shadow behind pointer
+    // Soft drop shadow behind pointer
     const shadow = new Graphics()
-    shadow.moveTo(2, -(R + 4))
-    shadow.lineTo(-9, -(R + 26))
-    shadow.lineTo(12, -(R + 26))
+    shadow.moveTo(2.5, -(R + 2))
+    shadow.lineTo(-8, -(R + 30))
+    shadow.lineTo(12, -(R + 30))
     shadow.closePath()
-    shadow.fill({ color: 0x000000, alpha: 0.4 })
+    shadow.fill({ color: 0x000000, alpha: 0.35 })
+    shadow.x = cx
+    shadow.y = cy
     this.app.stage.addChild(shadow)
-    shadow.x = this.wheelContainer.x
-    shadow.y = this.wheelContainer.y
 
-    // Red pointer triangle
+    // Main pointer body — dark red with highlight edge
     const ptr = new Graphics()
-    ptr.moveTo(0, -(R + 3))
-    ptr.lineTo(-10, -(R + 27))
-    ptr.lineTo(10, -(R + 27))
+    // Dark shadow side (left)
+    ptr.moveTo(-2, -(R + 2))
+    ptr.lineTo(-10, -(R + 30))
+    ptr.lineTo(0, -(R + 30))
     ptr.closePath()
-    ptr.fill({ color: 0xe83d3d })
-    ptr.stroke({ color: 0xffffff, width: 1.5 })
+    ptr.fill({ color: 0x9a1a1a })
+    // Bright side (right)
+    ptr.moveTo(2, -(R + 2))
+    ptr.lineTo(0, -(R + 30))
+    ptr.lineTo(10, -(R + 30))
+    ptr.closePath()
+    ptr.fill({ color: 0xff4444 })
+    // White highlight sliver
+    ptr.moveTo(1, -(R + 8))
+    ptr.lineTo(-1, -(R + 28))
+    ptr.lineTo(2, -(R + 28))
+    ptr.closePath()
+    ptr.fill({ color: 0xffffff, alpha: 0.30 })
+    // White tip accent
+    ptr.moveTo(-3, -(R + 27))
+    ptr.lineTo(3, -(R + 27))
+    ptr.lineTo(0, -(R + 31))
+    ptr.closePath()
+    ptr.fill({ color: 0xffffff, alpha: 0.60 })
+    ptr.x = cx
+    ptr.y = cy
     this.app.stage.addChild(ptr)
-    ptr.x = this.wheelContainer.x
-    ptr.y = this.wheelContainer.y
+    this.pointerGraphics = ptr   // store for flash effect
 
-    // Gold base circle where pointer meets ring
-    const base = new Graphics()
-    base.circle(0, -(R + 11), 8).fill({ color: 0xf5c322 })
-    base.circle(0, -(R + 11), 5).fill({ color: 0xfde88a })
-    this.app.stage.addChild(base)
-    base.x = this.wheelContainer.x
-    base.y = this.wheelContainer.y
+    // Gold jewel base where pointer meets ring
+    const jewel = new Graphics()
+    jewel.circle(0, -(R + 10), 9).fill({ color: 0x000000, alpha: 0.4 })   // shadow
+    jewel.circle(0, -(R + 10), 8).fill({ color: 0x6b3d00 })                // dark rim
+    jewel.circle(0, -(R + 10), 6.5).fill({ color: 0xf5c322 })              // gold
+    jewel.circle(0, -(R + 10), 5).fill({ color: 0xfde88a })                // bright face
+    jewel.circle(-1.5, -(R + 11.5), 2).fill({ color: 0xffffff, alpha: 0.7 }) // glint
+    jewel.x = cx
+    jewel.y = cy
+    this.app.stage.addChild(jewel)
+  }
+
+  private flashPointer() {
+    if (!this.pointerGraphics) return
+    this.pointerGraphics.alpha = 0.35
+    gsap.to(this.pointerGraphics, { alpha: 1, duration: 0.14, ease: 'power2.out' })
   }
 
   private drawGlowRing() {
@@ -292,8 +342,8 @@ export class SpinEngine {
     this.wheelContainer.addChild(container)
     this.particles = container
 
-    const colors = [0xf5c322, 0xe83d8a, 0x6c3de8, 0x3de8c4, 0xffffff, 0xf59430]
-    const count = 28
+    const colors = [0xf5c322, 0xe83d8a, 0x6c3de8, 0x3de8c4, 0xffffff, 0xf59430, 0xff6b35, 0x00e5ff, 0xadff2f, 0xc9961a]
+    const count = 40
 
     for (let i = 0; i < count; i++) {
       // Burst from the winning segment, not uniformly
@@ -302,7 +352,15 @@ export class SpinEngine {
       const endDist   = R * (1.0 + Math.random() * 0.35)
 
       const p = new Graphics()
-      p.circle(0, 0, 3 + Math.random() * 4).fill({ color: colors[i % colors.length] })
+      if (i % 3 === 0) {
+        // Rectangle confetti
+        const w = 3 + Math.random() * 4
+        const h = 5 + Math.random() * 6
+        p.rect(-w/2, -h/2, w, h).fill({ color: colors[i % colors.length] })
+      } else {
+        // Circle spark
+        p.circle(0, 0, 2.5 + Math.random() * 3.5).fill({ color: colors[i % colors.length] })
+      }
       p.x = Math.cos(spreadAngle) * startDist
       p.y = Math.sin(spreadAngle) * startDist
       container.addChild(p)
@@ -320,6 +378,14 @@ export class SpinEngine {
           }
         },
       })
+
+      if (i % 3 === 0) {
+        gsap.to(p, {
+          rotation: Math.PI * 2 * (Math.random() > 0.5 ? 1 : -1),
+          duration: 0.65 + Math.random() * 0.45,
+          ease: 'none',
+        })
+      }
     }
   }
 
@@ -351,10 +417,22 @@ export class SpinEngine {
     const targetDeg = fullSpins + (360 - targetSegmentIndex * segAngle) - segAngle / 2
     const targetRad = (this.currentRotation + targetDeg) * (Math.PI / 180)
 
+    let lastTickIndex = -1
+    const segAngleRad = (Math.PI * 2) / this.segments.length
+
     gsap.to(this.wheelContainer, {
       rotation: targetRad,
       duration: MIN_SPIN_SECONDS,
       ease: 'power4.out',
+      onUpdate: () => {
+        const normalized = ((this.wheelContainer.rotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)
+        const idx = Math.floor(normalized / segAngleRad) % this.segments.length
+        if (idx !== lastTickIndex) {
+          lastTickIndex = idx
+          this.flashPointer()
+          this.onTick?.()
+        }
+      },
       onComplete: () => {
         this.currentRotation = (this.currentRotation + targetDeg) % 360
         this.glowTween?.kill()
