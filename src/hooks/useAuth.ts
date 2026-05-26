@@ -8,15 +8,30 @@ const REFERRAL_APPLIED_KEY = 'sr_referral_applied'
 async function tryApplyReferralCode() {
   // Only attempt once per device — backend also enforces one-per-user,
   // but this avoids a pointless network call on every subsequent launch.
-  if (localStorage.getItem(REFERRAL_APPLIED_KEY)) return
+  if (localStorage.getItem(REFERRAL_APPLIED_KEY)){
+    console.log('referral applied from local storage already');
+    
+    return}
 
   const tg = (window as { Telegram?: { WebApp?: { initDataUnsafe?: { start_param?: string } } } })
     .Telegram?.WebApp
-  const startParam = tg?.initDataUnsafe?.start_param
+
+  // Primary: SDK's initDataUnsafe.start_param — populated when opened via a t.me deep link.
+  // Fallback: window.location.search ?startapp= — populated when the bot opens the mini app
+  //           via an inline webApp button with the code appended directly to the URL.
+  const startParam =
+    tg?.initDataUnsafe?.start_param ??
+    new URLSearchParams(window.location.search).get('startapp') ??
+    undefined
+
+  console.log('[Referral] startParam:', startParam ?? '(none)', '| source:', tg?.initDataUnsafe?.start_param ? 'initDataUnsafe' : 'locationSearch')
 
   // No referral code in this session — exit WITHOUT setting the flag so that
   // if this user later opens from a referral link, we still try to apply it.
-  if (!startParam || !startParam.startsWith('SPIN-')) return
+  if (!startParam || !startParam.startsWith('SPIN-')) {
+    console.log('[Referral] No valid SPIN- code found, skipping')
+    return
+  }
 
   // A code is present — attempt it. Set the flag in `finally` so we never
   // retry even if the call errors (backend enforces one-per-user anyway).
