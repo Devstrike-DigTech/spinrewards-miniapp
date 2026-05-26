@@ -143,6 +143,20 @@
   color: #e83d3d;
 }
 
+/* ── Section verified content (replaces form fields) ── */
+.sectionVerifiedContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(61, 232, 138, 0.06);
+  border: 1px solid rgba(61, 232, 138, 0.2);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3de88a;
+}
+
 /* ── Form group ── */
 .formGroup {
   display: flex;
