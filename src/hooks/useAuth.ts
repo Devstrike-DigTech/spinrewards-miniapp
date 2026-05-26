@@ -130,6 +130,8 @@ export function useAuth() {
 
         // Fresh login — attempt to apply a referral code from the deep link.
         // Fire-and-forget: we don't await so it never delays the app loading.
+        console.log('attempting to apply referral code');
+        
         tryApplyReferralCode()
       } catch (err) {
         console.error('[Auth] Failed:', err)
