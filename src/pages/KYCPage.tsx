@@ -7,6 +7,7 @@ import type {
   KYCBank,
   KYCDocumentUploadResponse,
   KYCSectionStatus,
+  KYCSubmitPayload,
 } from '@/types'
 import styles from './KYCPage.module.css'
 
@@ -314,7 +315,7 @@ export function KYCPage() {
     setSubmitError('')
 
     // Build payload selectively — don't re-submit already-verified sections
-    const payload: Record<string, unknown> = {}
+    const payload: Partial<KYCSubmitPayload> = {}
 
     if (ps !== 'verified') {
       payload.full_name = fullName.trim()
@@ -332,7 +333,7 @@ export function KYCPage() {
     }
 
     try {
-      const newStatus = await kycApi.submit(payload)
+      const newStatus = await kycApi.submit(payload as KYCSubmitPayload)
       setKycStatus(newStatus)
       haptic.notificationOccurred('success')
 
