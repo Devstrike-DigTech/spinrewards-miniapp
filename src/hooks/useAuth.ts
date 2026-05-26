@@ -8,15 +8,22 @@ const REFERRAL_APPLIED_KEY = 'sr_referral_applied'
 async function tryApplyReferralCode() {
   // Only attempt once per device — backend also enforces one-per-user,
   // but this avoids a pointless network call on every subsequent launch.
-  if (localStorage.getItem(REFERRAL_APPLIED_KEY)) return
+  if (localStorage.getItem(REFERRAL_APPLIED_KEY)){
+    console.log('referral applied from local storage already');
+    
+    return}
 
   const tg = (window as { Telegram?: { WebApp?: { initDataUnsafe?: { start_param?: string } } } })
     .Telegram?.WebApp
   const startParam = tg?.initDataUnsafe?.start_param
 
+  console.log('attempting to apply referral code:', startParam)
+
   // No referral code in this session — exit WITHOUT setting the flag so that
   // if this user later opens from a referral link, we still try to apply it.
-  if (!startParam || !startParam.startsWith('SPIN-')) return
+  if (!startParam || !startParam.startsWith('SPIN-')) {console.log('no valid referral code found'); 
+    return
+  }
 
   // A code is present — attempt it. Set the flag in `finally` so we never
   // retry even if the call errors (backend enforces one-per-user anyway).
