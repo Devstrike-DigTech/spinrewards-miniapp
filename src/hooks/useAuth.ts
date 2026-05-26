@@ -15,13 +15,21 @@ async function tryApplyReferralCode() {
 
   const tg = (window as { Telegram?: { WebApp?: { initDataUnsafe?: { start_param?: string } } } })
     .Telegram?.WebApp
-  const startParam = tg?.initDataUnsafe?.start_param
 
-  console.log('attempting to apply referral code:', startParam)
+  // Primary: SDK's initDataUnsafe.start_param — populated when opened via a t.me deep link.
+  // Fallback: window.location.search ?startapp= — populated when the bot opens the mini app
+  //           via an inline webApp button with the code appended directly to the URL.
+  const startParam =
+    tg?.initDataUnsafe?.start_param ??
+    new URLSearchParams(window.location.search).get('startapp') ??
+    undefined
+
+  console.log('[Referral] startParam:', startParam ?? '(none)', '| source:', tg?.initDataUnsafe?.start_param ? 'initDataUnsafe' : 'locationSearch')
 
   // No referral code in this session — exit WITHOUT setting the flag so that
   // if this user later opens from a referral link, we still try to apply it.
-  if (!startParam || !startParam.startsWith('SPIN-')) {console.log('no valid referral code found'); 
+  if (!startParam || !startParam.startsWith('SPIN-')) {
+    console.log('[Referral] No valid SPIN- code found, skipping')
     return
   }
 
