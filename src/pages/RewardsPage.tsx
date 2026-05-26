@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { challenges as challengesApi, referrals as referralsApi } from '@/api/endpoints'
 import type { Challenge, MyReferralEntry, MyCodeData } from '@/types'
+import { ShareSheet } from '@/components/ShareSheet/ShareSheet'
 import styles from './RewardsPage.module.css'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -96,13 +97,20 @@ function ChallengeCard({ challenge, onAction }: {
   }
 
   // Standard progress challenges
-  const btnClass = isCompleted && rewardClaimed
-    ? `${styles.btn} ${styles.btnDone}`
-    : isCompleted && !rewardClaimed
-      ? styles.btn
-      : `${styles.btn} ${styles.btnDisabled}`
+  // Reward is auto-distributed by the backend the instant a challenge completes.
+  // reward_claimed flips true in the same transaction — the "not yet claimed"
+  // state is a near-impossible race condition, handled gracefully below.
+  const btnClass = rewardClaimed
+    ? `${styles.btn} ${styles.btnDone}`       // green — done
+    : isCompleted
+      ? styles.btn                             // gold — navigates to action
+      : `${styles.btn} ${styles.btnDisabled}`  // gray — still in progress
 
-  const btnLabel = rewardClaimed ? 'Claimed ✓' : isCompleted ? 'Claim' : 'Claim'
+  const btnLabel = rewardClaimed
+    ? 'Claimed ✓'
+    : isCompleted
+      ? 'Go Claim'       // should auto-claim, but redirect as fallback
+      : 'In Progress'
 
   return (
     <div className={styles.card}>
@@ -115,7 +123,7 @@ function ChallengeCard({ challenge, onAction }: {
         <div className={styles.cardMeta}>
           <p className={styles.cardDescription}>
             {challenge.type === 'daily_login' || challenge.type === 'login_streak'
-              ? p ? 'Logged in today' : 'Log in to claim'
+              ? p ? 'Logged in today ✓' : 'Log in to earn'
               : challengeProgressText(challenge)}
           </p>
           <p className={styles.cardSub}>{challenge.description}</p>
@@ -223,6 +231,7 @@ export function RewardsPage() {
   const [referralList, setReferralList] = useState<MyReferralEntry[]>([])
   const [referralCode, setReferralCode] = useState<MyCodeData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [shareSheetOpen, setShareSheetOpen] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -264,11 +273,8 @@ export function RewardsPage() {
   }
 
   function handleShare() {
-    if (referralCode?.share_url) {
-      const text = `Join me on Spin Rewards! ${referralCode.share_url}`
-      const tg = (window as { Telegram?: { WebApp?: { openTelegramLink?: (url: string) => void } } }).Telegram?.WebApp
-      const url = `https://t.me/share/url?url=${encodeURIComponent(referralCode.share_url)}&text=${encodeURIComponent(text)}`
-      tg?.openTelegramLink?.(url) ?? window.open(url, '_blank')
+    if (referralCode?.code) {
+      setShareSheetOpen(true)
     } else {
       navigate('/profile')
     }
@@ -307,6 +313,17 @@ export function RewardsPage() {
             onShare={handleShare}
           />
         </>
+      )}
+
+      {shareSheetOpen && referralCode && (
+        <ShareSheet
+          data={{
+            code: referralCode.code,
+            shareUrl: referralCode.share_url,
+            text: `Join me on Spin Rewards and earn bonus coins! Use my referral code: ${referralCode.code}`,
+          }}
+          onClose={() => setShareSheetOpen(false)}
+        />
       )}
     </div>
   )

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { kyc as kycApi, referrals as referralsApi, wallet as walletApi } from '@/api/endpoints'
 import { useAuthStore } from '@/store/authStore'
 import type { KYCStatusResponse, WalletBalance, MyCodeData } from '@/types'
+import { ShareSheet } from '@/components/ShareSheet/ShareSheet'
 import styles from './WalletPage.module.css'
 import profileStyles from './ProfilePage.module.css'
 import WebApp from '@twa-dev/sdk'
@@ -152,6 +153,7 @@ export function ProfilePage() {
 
   const [notificationsOn, setNotificationsOn] = useState(() => loadSetting('notifications', true))
   const [soundsOn, setSoundsOn] = useState(() => loadSetting('sounds', false))
+  const [shareSheetOpen, setShareSheetOpen] = useState(false)
 
   useEffect(() => {
     kycApi.status().then(setKycStatus).catch(() => { /* non-critical */ })
@@ -171,10 +173,8 @@ export function ProfilePage() {
     .toUpperCase() || '?'
 
   function handleShare() {
-    if (!referralData) return
-    const text = `Join me on Spin Rewards and get bonus coins when you sign up! Use my code: ${referralData.code}`
-    const url = `https://t.me/share/url?url=${encodeURIComponent(referralData.share_url)}&text=${encodeURIComponent(text)}`
-    WebApp.openTelegramLink(url)
+    if (!referralData && !referralCode) return
+    setShareSheetOpen(true)
   }
 
   function handleLogout() {
@@ -283,6 +283,18 @@ export function ProfilePage() {
       <button className={profileStyles.logoutBtn} onClick={handleLogout}>
         ↪ Log out
       </button>
+
+      {/* ── Share Sheet ── */}
+      {shareSheetOpen && referralCode && (
+        <ShareSheet
+          data={{
+            code: referralCode,
+            shareUrl: referralData?.share_url ?? `https://t.me/SpinRewardsBot?start=${referralCode}`,
+            text: `Join me on Spin Rewards and earn bonus coins! Use my referral code: ${referralCode}`,
+          }}
+          onClose={() => setShareSheetOpen(false)}
+        />
+      )}
     </div>
   )
 }
