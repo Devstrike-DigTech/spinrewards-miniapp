@@ -1,36 +1,17 @@
-/* ── Page shell ── */
+/* ── Page shell — fully scrollable ── */
 .page {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-  background: #0a0a1a;
-}
-
-/* ── Fixed top (topBar + welcomeBanner + spinCard) ── */
-.fixedTop {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px 12px 0;
-  overflow: hidden;
-}
-
-/* ── Scrollable area (daily reward + recent spins) ── */
-.scrollArea {
-  flex: 1;
-  min-height: 0;
+  gap: 12px;
+  min-height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 10px 12px 28px;
+  background: #0a0a1a;
+  padding: 12px 12px 96px;
   scrollbar-width: none;
 }
-.scrollArea::-webkit-scrollbar { display: none; }
+.page::-webkit-scrollbar { display: none; }
 
 /* ── Loading ── */
 .loadingScreen {
@@ -189,7 +170,7 @@
   position: absolute;
   inset: -28px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(201,150,26,0.20) 0%, rgba(201,150,26,0.05) 50%, transparent 70%);
+  background: radial-gradient(circle, rgba(80,110,230,0.18) 0%, rgba(50,70,200,0.06) 50%, transparent 70%);
   animation: ambientPulse 3.5s ease-in-out infinite;
   pointer-events: none;
   z-index: 0;

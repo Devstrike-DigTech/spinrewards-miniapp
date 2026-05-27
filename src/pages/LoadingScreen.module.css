@@ -9,8 +9,8 @@
 }
 
 .logo {
-  width: 100px;
-  height: 100px;
+  width: 120px;
+  height: 120px;
   object-fit: contain;
   /* subtle pulse while loading */
   animation: pulse 2s ease-in-out infinite;
@@ -22,8 +22,8 @@
 }
 
 .spinner {
-  width: 36px;
-  height: 36px;
+  width: 42px;
+  height: 42px;
   border: 3px solid var(--color-bg-elevated);
   border-top-color: var(--color-accent-purple);
   border-radius: 50%;

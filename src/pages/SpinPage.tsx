@@ -4,7 +4,7 @@ import { SpinWheel } from '@/components/SpinWheel/SpinWheel'
 import { SpinEngine, DEFAULT_SEGMENTS } from '@/components/SpinWheel/spinEngine'
 import { Confetti } from '@/components/Confetti/Confetti'
 import { FundWalletModal } from '@/components/FundWalletModal/FundWalletModal'
-import { spin as spinApi, wallet, rewards as rewardsApi, kyc as kycApi } from '@/api/endpoints'
+import { spin as spinApi, wallet, rewards as rewardsApi, kyc as kycApi, challenges as challengesApi } from '@/api/endpoints'
 import { useWalletStore } from '@/store/walletStore'
 import { useTelegram } from '@/hooks/useTelegram'
 import { sounds } from '@/lib/sounds'
@@ -84,6 +84,9 @@ export function SpinPage() {
   // Mute
   const [muted, setMuted] = useState(false)
 
+  // Whether any active daily_login / login_streak challenge exists (controls daily reward strip)
+  const [hasLoginChallenge, setHasLoginChallenge] = useState(false)
+
   // ── Load active wheels + supplemental data on mount ───────────────────────
   useEffect(() => {
     Promise.allSettled([
@@ -92,7 +95,8 @@ export function SpinPage() {
       rewardsApi.status(),
       spinApi.history(1),
       kycApi.status(),
-    ]).then(([wheelsR, balR, rewardR, histR, kycR]) => {
+      challengesApi.list(),
+    ]).then(([wheelsR, balR, rewardR, histR, kycR, challengesR]) => {
       if (wheelsR.status === 'fulfilled') {
         const list = wheelsR.value
         setActiveWheels(list)
@@ -108,6 +112,13 @@ export function SpinPage() {
         setRecentSpins(Array.isArray(d) ? d.slice(0, 5) : (d?.results ?? []).slice(0, 5))
       }
       if (kycR.status === 'fulfilled') setKycOverall(kycR.value.overall_status)
+      if (challengesR.status === 'fulfilled') {
+        const list = challengesR.value.challenges ?? []
+        const hasLogin = list.some(
+          (c) => (c.type === 'daily_login' || c.type === 'login_streak') && c.is_active
+        )
+        setHasLoginChallenge(hasLogin)
+      }
       setLoadingWheels(false)
     })
   }, [setBalance])
@@ -399,9 +410,6 @@ export function SpinPage() {
     <>
       <div className={styles.page}>
 
-        {/* ══ FIXED TOP — topBar + welcomeBanner + spinCard ══ */}
-        <div className={styles.fixedTop}>
-
           {/* ── Top bar ── */}
           <div className={styles.topBar}>
             <div className={styles.coinPill}>
@@ -557,13 +565,8 @@ export function SpinPage() {
             </button>
           </div>
 
-        </div>{/* end .fixedTop */}
-
-        {/* ══ SCROLLABLE AREA — daily reward + recent spins ══ */}
-        <div className={styles.scrollArea}>
-
-          {/* ── Daily reward ── */}
-          {dailyReward && (
+          {/* ── Daily reward — only when a login challenge is active ── */}
+          {dailyReward && hasLoginChallenge && (
             <div className={styles.section}>
               <p className={styles.sectionTitle}>Daily Reward</p>
               <div className={styles.dayStrip}>
@@ -620,8 +623,6 @@ export function SpinPage() {
               </div>
             </div>
           )}
-
-        </div>{/* end .scrollArea */}
 
       </div>
 

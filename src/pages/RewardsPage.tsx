@@ -36,6 +36,13 @@ function challengeIcon(type: string) {
 function challengeProgressText(challenge: Challenge) {
   const p = challenge.my_progress
   const target = challenge.criteria.target_count as number
+
+  // total_staked uses Naira amounts, not counts
+  if (challenge.type === 'total_staked') {
+    const current = p?.current_count ?? 0
+    return `₦${current.toLocaleString()} / ₦${target.toLocaleString()} staked`
+  }
+
   if (!p) return `0 / ${target}`
   return `${p.current_count} / ${target}`
 }
@@ -145,7 +152,11 @@ function ChallengeCard({ challenge, onAction }: {
             style={{ width: `${pct}%` }}
           />
         </div>
-        <p className={styles.progressText}>{current} / {target}</p>
+        <p className={styles.progressText}>
+          {challenge.type === 'total_staked'
+            ? `₦${current.toLocaleString()} / ₦${target.toLocaleString()}`
+            : `${current} / ${target}`}
+        </p>
       </div>
     </div>
   )

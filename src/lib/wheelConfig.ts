@@ -8,14 +8,14 @@
  * The actual outcome label shown to the user comes from the
  * server's `segment_label` field — these are only for the visual.
  *
- * Colour convention (matches design spec):
- *   LOSS / 0×     → dark charcoal  #2a2a2a
- *   Push / 0.5×   → slate          #455A64
- *   1× return     → steel blue     #546E7A
- *   2–3× wins     → navy           #1A237E / #1565C0
- *   5× wins       → deep orange    #E65100
- *   10× wins      → amber          #C9961A
- *   50×+ jackpot  → gold           #F5A623
+ * Colour palette (matches screenshot aesthetic):
+ *   LOSS / 0×     → dark navy      #1a2e5c
+ *   Push / 0.5×   → dark-mid blue  #2a3f7c
+ *   1× return     → orange         #e87a35
+ *   2–3× wins     → royal blue     #3d72d4  /  #4a7fe8
+ *   5× wins       → pink/magenta   #cc3381
+ *   10× wins      → amber orange   #e8a030
+ *   50×+ jackpot  → bright gold    #f5a623
  */
 
 export interface VisualSegment {
@@ -23,12 +23,13 @@ export interface VisualSegment {
   label: string
   /** Background fill colour */
   color: string
-  /** Whether to show the coin icon (false for loss segments) */
+  /** Whether the segment represents a net-win (used by SpinPage result logic) */
   showCoin: boolean
 }
 
-const LOSS: VisualSegment = { label: 'LOSS',  color: '#2a2a2a', showCoin: false }
-const PUSH: VisualSegment = { label: '0.5×',  color: '#374151', showCoin: false }
+// Base loss/push colours — still with showCoin: true so every segment has a coin (matches design)
+const LOSS: VisualSegment = { label: 'LOSS',  color: '#1a2e5c', showCoin: true  }
+const PUSH: VisualSegment = { label: '0.5×',  color: '#2a3f7c', showCoin: true  }
 
 export const WHEEL_VISUAL_CONFIGS: Record<string, VisualSegment[]> = {
   /**
@@ -38,13 +39,13 @@ export const WHEEL_VISUAL_CONFIGS: Record<string, VisualSegment[]> = {
    */
   standard: [
     LOSS,
-    { label: '2×',  color: '#1A237E', showCoin: true  },
+    { label: '2×',  color: '#3d72d4', showCoin: true  },
     LOSS,
-    { label: '3×',  color: '#1565C0', showCoin: true  },
+    { label: '3×',  color: '#e87a35', showCoin: true  },
     LOSS,
-    { label: '1×',  color: '#455A64', showCoin: true  },
+    { label: '1×',  color: '#4a7fe8', showCoin: true  },
     PUSH,
-    { label: '5×',  color: '#E65100', showCoin: true  },
+    { label: '5×',  color: '#cc3381', showCoin: true  },
   ],
 
   /**
@@ -53,12 +54,12 @@ export const WHEEL_VISUAL_CONFIGS: Record<string, VisualSegment[]> = {
    */
   power: [
     LOSS,
-    { label: '3×',  color: '#E86D1F', showCoin: true  },
+    { label: '3×',  color: '#e87a35', showCoin: true  },
     LOSS,
-    { label: '5×',  color: '#F5A623', showCoin: true  },
+    { label: '5×',  color: '#cc3381', showCoin: true  },
     LOSS,
-    { label: '1×',  color: '#B84010', showCoin: true  },
-    { label: '10×', color: '#C9961A', showCoin: true  },
+    { label: '1×',  color: '#3d72d4', showCoin: true  },
+    { label: '10×', color: '#e8a030', showCoin: true  },
     LOSS,
   ],
 
@@ -68,41 +69,41 @@ export const WHEEL_VISUAL_CONFIGS: Record<string, VisualSegment[]> = {
    */
   mega: [
     LOSS,
-    { label: '2×',  color: '#1558BF', showCoin: true  },
+    { label: '2×',  color: '#3d72d4', showCoin: true  },
     LOSS,
-    { label: '5×',  color: '#1E73E8', showCoin: true  },
-    { label: '10×', color: '#0D47A1', showCoin: true  },
+    { label: '5×',  color: '#e87a35', showCoin: true  },
+    { label: '10×', color: '#cc3381', showCoin: true  },
     LOSS,
-    { label: '50×', color: '#F5A623', showCoin: true  },
+    { label: '50×', color: '#f5a623', showCoin: true  },
     LOSS,
   ],
 
   /**
-   * Welcome (free spin) — flat ₦ amounts
+   * Welcome (free spin) — flat ₦ amounts, all colorful
    */
   welcome: [
-    { label: '₦100',  color: '#1A2870', showCoin: true },
-    { label: '₦500',  color: '#C9961A', showCoin: true },
-    { label: '₦200',  color: '#2E5CE6', showCoin: true },
-    { label: '₦1K',   color: '#D4308A', showCoin: true },
-    { label: '₦200',  color: '#1A2870', showCoin: true },
-    { label: '₦5K',   color: '#F5A623', showCoin: true },
-    { label: '₦100',  color: '#2E5CE6', showCoin: true },
-    { label: '₦500',  color: '#C9961A', showCoin: true },
+    { label: '₦100',  color: '#1e3a8c', showCoin: true },
+    { label: '₦500',  color: '#e87a35', showCoin: true },
+    { label: '₦200',  color: '#3d72d4', showCoin: true },
+    { label: '₦1K',   color: '#cc3381', showCoin: true },
+    { label: '₦200',  color: '#2a3f7c', showCoin: true },
+    { label: '₦5K',   color: '#f5a623', showCoin: true },
+    { label: '₦100',  color: '#4a7fe8', showCoin: true },
+    { label: '₦500',  color: '#e87a35', showCoin: true },
   ],
 
   /**
-   * Daily Challenge — configurable; show generic high multipliers
+   * Daily Challenge — configurable high multipliers
    */
   daily_challenge: [
     LOSS,
-    { label: '×200', color: '#1B7A40', showCoin: true },
-    { label: '×100', color: '#0A3020', showCoin: true },
-    { label: '×500', color: '#3DC878', showCoin: true },
+    { label: '×200', color: '#3d72d4', showCoin: true },
+    { label: '×100', color: '#2a3f7c', showCoin: true },
+    { label: '×500', color: '#cc3381', showCoin: true },
     LOSS,
-    { label: '×300', color: '#1B7A40', showCoin: true },
-    { label: '×1K',  color: '#C9961A', showCoin: true },
-    { label: '×200', color: '#0A3020', showCoin: true },
+    { label: '×300', color: '#e87a35', showCoin: true },
+    { label: '×1K',  color: '#f5a623', showCoin: true },
+    { label: '×200', color: '#4a7fe8', showCoin: true },
   ],
 }
 
@@ -114,8 +115,7 @@ export function getWheelVisualConfig(wheelType: string): VisualSegment[] {
 /**
  * Converts backend WheelSegmentAPI[] → VisualSegment[].
  * Segments are sorted by position so index === position.
- * showCoin is true for any segment whose multiplier >= 1 (i.e. the player
- * gets at least their stake back — losses and partial losses don't show a coin).
+ * showCoin is true for any segment whose multiplier >= 0.5 (partial return or better).
  */
 export function segmentsFromApi(
   apiSegments: import('@/types').WheelSegmentAPI[]
@@ -125,7 +125,7 @@ export function segmentsFromApi(
     .map((seg) => ({
       label: seg.label,
       color: seg.color,
-      showCoin: parseFloat(seg.multiplier) >= 1,
+      showCoin: parseFloat(seg.multiplier) >= 0,  // always true — coins on all segments
     }))
 }
 
