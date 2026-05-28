@@ -79,19 +79,19 @@ export class SpinEngine {
 
     // ── Outer ambient glow (behind everything, add at index 0) ────────────
     const glow = new Graphics()
-    glow.circle(0, 0, R + 36).fill({ color: 0xc9961a, alpha: 0.06 })
-    glow.circle(0, 0, R + 30).fill({ color: 0xc9961a, alpha: 0.10 })
-    glow.circle(0, 0, R + 24).fill({ color: 0xc9961a, alpha: 0.14 })
+    glow.circle(0, 0, R + 36).fill({ color: 0x4060c0, alpha: 0.04 })
+    glow.circle(0, 0, R + 30).fill({ color: 0x6080d0, alpha: 0.07 })
+    glow.circle(0, 0, R + 24).fill({ color: 0x8090c0, alpha: 0.10 })
     this.wheelContainer.addChild(glow)
 
-    // ── Gold ring layers ───────────────────────────────────────────────────
+    // ── Silver metallic ring layers ────────────────────────────────────────
     const outerRing = new Graphics()
-    outerRing.circle(0, 0, R + 20).fill({ color: 0x1a0e00 }) // dark shadow outer edge
-    outerRing.circle(0, 0, R + 18).fill({ color: 0x6b3d00 }) // dark gold
-    outerRing.circle(0, 0, R + 14).fill({ color: 0xc9961a }) // rich gold
-    outerRing.circle(0, 0, R + 10).fill({ color: 0xf5c322 }) // bright gold highlight
-    outerRing.circle(0, 0, R +  6).fill({ color: 0xe8a800 }) // warm gold
-    outerRing.circle(0, 0, R +  3).fill({ color: 0x8a5c00 }) // dark inner rim
+    outerRing.circle(0, 0, R + 20).fill({ color: 0x0e0e14 }) // dark shadow outer edge
+    outerRing.circle(0, 0, R + 18).fill({ color: 0x404050 }) // dark silver
+    outerRing.circle(0, 0, R + 14).fill({ color: 0x808090 }) // mid silver
+    outerRing.circle(0, 0, R + 10).fill({ color: 0xc8c8d8 }) // bright silver highlight
+    outerRing.circle(0, 0, R +  6).fill({ color: 0x9898a8 }) // cool silver
+    outerRing.circle(0, 0, R +  3).fill({ color: 0x2a2a38 }) // dark inner rim
     this.wheelContainer.addChild(outerRing)
 
     // ── Segments ──────────────────────────────────────────────────────────
@@ -124,8 +124,8 @@ export class SpinEngine {
       line.stroke({ color: 0x00000055, width: 1.5 })
       this.wheelContainer.addChild(line)
 
-      // ── Coin icon (only on win segments) ──────────────────────────────
-      if (seg.showCoin) {
+      // ── Coin icon on every segment ────────────────────────────────────
+      {
         const coinR  = R * 0.115
         const coinD  = R * 0.70
         const cx = Math.cos(midAngle) * coinD
@@ -158,18 +158,16 @@ export class SpinEngine {
 
       // ── Label text ────────────────────────────────────────────────────
       const isLoss = !seg.showCoin
-      const textDist = isLoss ? R * 0.52 : R * 0.37
-      const fontSize = Math.max(R * (isLoss ? 0.095 : 0.12), 11)
+      const textDist = R * 0.37
+      const fontSize = Math.max(R * 0.10, 10)
 
       const style = new TextStyle({
-        fill: isLoss ? '#6a6a7a' : '#ffffff',
+        fill: isLoss ? 'rgba(255,255,255,0.70)' : '#ffffff',
         fontSize,
         fontWeight: '900',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        dropShadow: isLoss ? undefined : {
-          color: '#000000', blur: 5, distance: 1.5, alpha: 0.8,
-        },
-        stroke: isLoss ? undefined : { color: '#000000', width: 1.5 },
+        dropShadow: { color: '#000000', blur: 4, distance: 1.5, alpha: isLoss ? 0.5 : 0.8 },
+        stroke: { color: '#000000', width: 1.5 },
       })
       const lbl = new Text({ text: seg.label, style })
       lbl.anchor.set(0.5)
@@ -186,32 +184,23 @@ export class SpinEngine {
       this.wheelContainer.addChild(lbl)
     })
 
-    // ── Decorative gold diamond pins at segment boundaries ─────────────────
+    // ── White circular pins at segment boundaries ─────────────────────────
     for (let i = 0; i < segCount; i++) {
       const a = i * segAngle - Math.PI / 2
       const px = Math.cos(a) * (R + 10)
       const py = Math.sin(a) * (R + 10)
 
       const pin = new Graphics()
-      // Outer shadow
-      pin.circle(px, py, 7).fill({ color: 0x000000, alpha: 0.45 })
-      // Dark gold rim
-      pin.circle(px, py, 6).fill({ color: 0x6b3d00 })
-      // Bright gold face
-      pin.circle(px, py, 5).fill({ color: 0xf5c322 })
-      // White glint
-      pin.circle(px - 1.5, py - 1.8, 2).fill({ color: 0xffffff, alpha: 0.75 })
+      // Shadow
+      pin.circle(px, py, 6.5).fill({ color: 0x000000, alpha: 0.35 })
+      // Silver rim
+      pin.circle(px, py, 5.5).fill({ color: 0x9898a8 })
+      // Bright white face
+      pin.circle(px, py, 4.5).fill({ color: 0xeeeef8 })
+      // Glint
+      pin.circle(px - 1.2, py - 1.5, 1.8).fill({ color: 0xffffff, alpha: 0.70 })
       this.wheelContainer.addChild(pin)
     }
-
-    // ── 3D dome light — simulates overhead lighting on a convex surface ────
-    const dome = new Graphics()
-    // Top-half white crescent
-    dome.arc(0, 0, R * 0.95, -Math.PI * 0.9, -Math.PI * 0.1)
-    dome.arc(0, 0, R * 0.40, -Math.PI * 0.1, -Math.PI * 0.9, true)
-    dome.closePath()
-    dome.fill({ color: 0xffffff, alpha: 0.06 })
-    this.wheelContainer.addChild(dome)
 
     // ── Inner metallic hub ring ─────────────────────────────────────────────
     const hub = new Graphics()
@@ -323,7 +312,7 @@ export class SpinEngine {
 
   private drawGlowRing() {
     const ring = new Graphics()
-    ring.circle(0, 0, this.radius + 22).stroke({ color: 0xf5c322, width: 6, alpha: 0 })
+    ring.circle(0, 0, this.radius + 22).stroke({ color: 0xc0c0e0, width: 6, alpha: 0 })
     this.wheelContainer.addChildAt(ring, 0)
     this.glowRing = ring
   }

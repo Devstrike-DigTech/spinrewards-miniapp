@@ -1,4 +1,4 @@
-/* ── Page shell ── */
+/* ── Page shell — fully scrollable ── */
 .page {
   position: relative;
   height: 100%;
@@ -322,7 +322,7 @@
   position: absolute;
   inset: -28px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(201,150,26,0.20) 0%, rgba(201,150,26,0.05) 50%, transparent 70%);
+  background: radial-gradient(circle, rgba(80,110,230,0.18) 0%, rgba(50,70,200,0.06) 50%, transparent 70%);
   animation: ambientPulse 3.5s ease-in-out infinite;
   pointer-events: none;
   z-index: 0;
