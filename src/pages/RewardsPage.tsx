@@ -1,18 +1,29 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { challenges as challengesApi, referrals as referralsApi } from '@/api/endpoints'
 import type { Challenge, MyReferralEntry, MyCodeData } from '@/types'
 import { ShareSheet } from '@/components/ShareSheet/ShareSheet'
+import { useMiniToast } from '@/components/MiniToast/MiniToast'
 import styles from './RewardsPage.module.css'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function rewardLabel(reward: Challenge['reward']) {
   switch (reward.type) {
+    case 'coins': return `${reward.amount} coins`
+    case 'cash': return `₦${reward.amount.toLocaleString()}`
+    case 'free_spins': return `${reward.amount} spin${reward.amount > 1 ? 's' : ''}`
+    case 'multiplier_boost': return `${reward.amount}×`
+    default: return `${reward.amount}`
+  }
+}
+
+function rewardBadge(reward: Challenge['reward']) {
+  switch (reward.type) {
     case 'coins': return `x${reward.amount}`
     case 'cash': return `₦${reward.amount.toLocaleString()}`
     case 'free_spins': return `${reward.amount} spin${reward.amount > 1 ? 's' : ''}`
-    case 'multiplier_boost': return `${reward.amount}x`
+    case 'multiplier_boost': return `${reward.amount}×`
     default: return `${reward.amount}`
   }
 }
@@ -59,38 +70,43 @@ function referralStatusLabel(status: MyReferralEntry['status']) {
 
 // ── Challenge Card ────────────────────────────────────────────────────────────
 
-function ChallengeCard({ challenge, onAction }: {
+function ChallengeCard({
+  challenge,
+  onWelcomeSpin,
+  onClaim,
+  claiming,
+}: {
   challenge: Challenge
-  onAction: (c: Challenge) => void
+  onWelcomeSpin: () => void
+  onClaim: (id: string) => void
+  claiming: boolean
 }) {
   const p = challenge.my_progress
   const target = (challenge.criteria.target_count as number) ?? 1
   const current = p?.current_count ?? 0
   const pct = Math.min(p?.progress_pct ?? 0, 100)
   const isCompleted = p?.is_completed ?? false
+  const isClaimable = p?.claimable ?? false
   const rewardClaimed = p?.reward_claimed ?? false
 
-  // Welcome spin — no progress bar, just a CTA
+  // ── Welcome spin — no progress bar, just a CTA ──
   if (challenge.type === 'welcome') {
-    const used = isCompleted
     return (
       <div className={styles.card}>
         <p className={styles.cardTitle}>{challenge.name}</p>
         <div className={styles.cardRow}>
-          <div className={styles.cardIcon}>
-            🎡
-          </div>
+          <div className={styles.cardIcon}>🎡</div>
           <div className={styles.cardMeta}>
             <p className={styles.cardDescription}>
-              {used ? 'Welcome spin used!' : 'You have one free spin!'}
+              {isCompleted ? 'Welcome spin used!' : 'You have one free spin!'}
             </p>
           </div>
-          {!used && (
-            <button className={styles.btn} onClick={() => onAction(challenge)}>
+          {!isCompleted && (
+            <button className={styles.btn} onClick={onWelcomeSpin}>
               Spin Now
             </button>
           )}
-          {used && (
+          {isCompleted && (
             <span className={`${styles.btn} ${styles.btnDone}`}>Done ✓</span>
           )}
         </div>
@@ -98,26 +114,15 @@ function ChallengeCard({ challenge, onAction }: {
     )
   }
 
-  // Referral challenge — handled separately via referral list
-  if (challenge.type === 'referral') {
-    return null // rendered by ReferralBonusCard
-  }
+  // ── Referral — rendered separately ──
+  if (challenge.type === 'referral') return null
 
-  // Standard progress challenges
-  // Reward is auto-distributed by the backend the instant a challenge completes.
-  // reward_claimed flips true in the same transaction — the "not yet claimed"
-  // state is a near-impossible race condition, handled gracefully below.
-  const btnClass = rewardClaimed
-    ? `${styles.btn} ${styles.btnDone}`       // green — done
-    : isCompleted
-      ? styles.btn                             // gold — navigates to action
-      : `${styles.btn} ${styles.btnDisabled}`  // gray — still in progress
-
-  const btnLabel = rewardClaimed
-    ? 'Claimed ✓'
-    : isCompleted
-      ? 'Go Claim'       // should auto-claim, but redirect as fallback
-      : 'In Progress'
+  // ── Standard progress challenges ──
+  // Button state hierarchy:
+  //   claimable   → glowing "Claim {amount}!" (calls claim API)
+  //   rewardClaimed / (completed & !claimable) → "Claimed ✓" (done)
+  //   in progress → "In Progress" (disabled)
+  const isDone = rewardClaimed || (isCompleted && !isClaimable)
 
   return (
     <div className={styles.card}>
@@ -125,30 +130,39 @@ function ChallengeCard({ challenge, onAction }: {
       <div className={styles.cardRow}>
         <div className={styles.cardIcon}>
           {challengeIcon(challenge.type)}
-          <span className={styles.coinBadge}>{rewardLabel(challenge.reward)}</span>
+          <span className={styles.coinBadge}>{rewardBadge(challenge.reward)}</span>
         </div>
         <div className={styles.cardMeta}>
           <p className={styles.cardDescription}>
             {challenge.type === 'daily_login' || challenge.type === 'login_streak'
-              ? p ? 'Logged in today ✓' : 'Log in to earn'
+              ? p
+                ? 'Logged in today ✓'
+                : 'Log in to earn'
               : challengeProgressText(challenge)}
           </p>
           <p className={styles.cardSub}>{challenge.description}</p>
         </div>
-        <button
-          className={btnClass}
-          disabled={!isCompleted || rewardClaimed}
-          onClick={() => isCompleted && !rewardClaimed && onAction(challenge)}
-        >
-          {btnLabel}
-        </button>
+
+        {isClaimable ? (
+          <button
+            className={`${styles.btn} ${styles.btnClaim}`}
+            disabled={claiming}
+            onClick={() => onClaim(challenge.id)}
+          >
+            {claiming ? '…' : `Claim ${rewardLabel(challenge.reward)}!`}
+          </button>
+        ) : isDone ? (
+          <span className={`${styles.btn} ${styles.btnDone}`}>Claimed ✓</span>
+        ) : (
+          <span className={`${styles.btn} ${styles.btnDisabled}`}>In Progress</span>
+        )}
       </div>
 
       {/* Progress bar */}
       <div className={styles.progressWrap}>
         <div className={styles.progressBar}>
           <div
-            className={`${styles.progressFill}${isCompleted ? ` ${styles.progressFillDone}` : ''}`}
+            className={`${styles.progressFill}${isCompleted || isDone ? ` ${styles.progressFillDone}` : ''}`}
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -185,7 +199,7 @@ function ReferralBonusCard({
         <div className={styles.cardRow}>
           <div className={styles.cardIcon}>
             👥
-            <span className={styles.coinBadge}>{rewardLabel(reward)}</span>
+            <span className={styles.coinBadge}>{rewardBadge(reward)}</span>
           </div>
           <div className={styles.cardMeta}>
             <p className={styles.cardDescription}>Invite friends to earn rewards</p>
@@ -206,7 +220,7 @@ function ReferralBonusCard({
                 <div className={styles.cardRow} style={{ paddingTop: i > 0 ? 8 : 0 }}>
                   <div className={styles.cardIcon}>
                     👥
-                    <span className={styles.coinBadge}>{rewardLabel(reward)}</span>
+                    <span className={styles.coinBadge}>{rewardBadge(reward)}</span>
                   </div>
                   <div className={styles.cardMeta}>
                     <p className={styles.cardDescription}>{ref.referred_user.name}</p>
@@ -238,49 +252,60 @@ function ReferralBonusCard({
 
 export function RewardsPage() {
   const navigate = useNavigate()
+  const toast = useMiniToast()
+
   const [challengesList, setChallengesList] = useState<Challenge[]>([])
   const [referralList, setReferralList] = useState<MyReferralEntry[]>([])
   const [referralCode, setReferralCode] = useState<MyCodeData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [shareSheetOpen, setShareSheetOpen] = useState(false)
+  const [claimingId, setClaimingId] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [challengesRes, referralsRes, codeRes] = await Promise.allSettled([
-          challengesApi.list(),
-          referralsApi.myReferrals(),
-          referralsApi.myCode(),
-        ])
-
-        if (challengesRes.status === 'fulfilled') {
-          setChallengesList(challengesRes.value.challenges ?? [])
-        }
-        if (referralsRes.status === 'fulfilled') {
-          setReferralList(referralsRes.value.referrals ?? [])
-        }
-        if (codeRes.status === 'fulfilled') {
-          setReferralCode(codeRes.value)
-        }
-      } finally {
-        setIsLoading(false)
+  const loadData = useCallback(async () => {
+    try {
+      const [challengesRes, referralsRes, codeRes] = await Promise.allSettled([
+        challengesApi.list(),
+        referralsApi.myReferrals(),
+        referralsApi.myCode(),
+      ])
+      if (challengesRes.status === 'fulfilled') {
+        setChallengesList(challengesRes.value.challenges ?? [])
       }
+      if (referralsRes.status === 'fulfilled') {
+        setReferralList(referralsRes.value.referrals ?? [])
+      }
+      if (codeRes.status === 'fulfilled') {
+        setReferralCode(codeRes.value)
+      }
+    } finally {
+      setIsLoading(false)
     }
-    load()
   }, [])
 
-  function handleChallengeAction(challenge: Challenge) {
-    // Navigate to the relevant page based on challenge type
-    if (challenge.type === 'welcome') {
-      navigate('/')
-    } else if (challenge.type === 'deposit') {
-      navigate('/wallet')
-    } else if (challenge.type === 'referral') {
-      navigate('/profile')
-    } else {
-      // spin_count, spin_streak, win_streak → go spin
-      navigate('/')
+  useEffect(() => { loadData() }, [loadData])
+
+  const handleClaim = useCallback(async (challengeId: string) => {
+    if (claimingId) return
+    setClaimingId(challengeId)
+    try {
+      const res = await challengesApi.claim(challengeId)
+      toast.show(res.message ?? 'Reward claimed!', 'success')
+      // Refetch to flip claimable → claimed on all cards
+      const updated = await challengesApi.list()
+      setChallengesList(updated.challenges ?? [])
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ??
+        err?.response?.data?.error ??
+        'Failed to claim reward.'
+      toast.show(msg, 'error')
+    } finally {
+      setClaimingId(null)
     }
+  }, [claimingId, toast])
+
+  function handleWelcomeSpin() {
+    navigate('/')
   }
 
   function handleShare() {
@@ -314,7 +339,9 @@ export function RewardsPage() {
             <ChallengeCard
               key={ch.id}
               challenge={ch}
-              onAction={handleChallengeAction}
+              onWelcomeSpin={handleWelcomeSpin}
+              onClaim={handleClaim}
+              claiming={claimingId === ch.id}
             />
           ))}
 
@@ -336,6 +363,8 @@ export function RewardsPage() {
           onClose={() => setShareSheetOpen(false)}
         />
       )}
+
+      <toast.View />
     </div>
   )
 }
