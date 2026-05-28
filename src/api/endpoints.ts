@@ -19,6 +19,7 @@ import type {
   DailyRewardStatus,
   User,
   Challenge,
+  ChallengeClaimResponse,
   MyCodeData,
   MyReferralsData,
 } from '@/types'
@@ -155,6 +156,16 @@ export const challenges = {
 
   get: (id: string): Promise<Challenge> =>
     apiClient.get(`/challenges/${id}/`).then((r) => r.data?.data ?? r.data),
+
+  /**
+   * Manually claim the reward for a completed challenge.
+   * Endpoint: POST /challenges/{id}/claim/
+   * Returns { message: "You earned 200 coins!" }
+   */
+  claim: (id: string): Promise<ChallengeClaimResponse> =>
+    apiClient
+      .post(`/challenges/${id}/claim/`)
+      .then((r) => r.data?.data ?? r.data),
 }
 
 // Withdrawals

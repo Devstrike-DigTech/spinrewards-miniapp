@@ -4,13 +4,14 @@ import { SpinWheel } from '@/components/SpinWheel/SpinWheel'
 import { SpinEngine, DEFAULT_SEGMENTS } from '@/components/SpinWheel/spinEngine'
 import { Confetti } from '@/components/Confetti/Confetti'
 import { FundWalletModal } from '@/components/FundWalletModal/FundWalletModal'
-import { spin as spinApi, wallet, rewards as rewardsApi, kyc as kycApi } from '@/api/endpoints'
+import { useMiniToast } from '@/components/MiniToast/MiniToast'
+import { spin as spinApi, wallet, rewards as rewardsApi, kyc as kycApi, challenges as challengesApi } from '@/api/endpoints'
 import { useWalletStore } from '@/store/walletStore'
 import { useTelegram } from '@/hooks/useTelegram'
 import { sounds } from '@/lib/sounds'
 import { getWheelVisualConfig, deriveStakePresets, segmentsFromApi } from '@/lib/wheelConfig'
 import { formatNaira, formatCoins } from '@/lib/format'
-import type { WheelRecord, SpinResult, DailyRewardStatus, KYCOverallStatus } from '@/types'
+import type { WheelRecord, SpinResult, DailyRewardStatus, KYCOverallStatus, Challenge } from '@/types'
 import styles from './SpinPage.module.css'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -39,6 +40,69 @@ function useDebounce<T>(value: T, delay: number): T {
 type SpinPhase = 'idle' | 'preparing' | 'spinning' | 'revealing' | 'error'
 type WheelLookup = 'idle' | 'searching' | 'found' | 'not_found' | 'error'
 
+// ── Login Streak Card ─────────────────────────────────────────────────────────
+
+function LoginStreakCard({
+  challenge,
+  onClaim,
+  claiming,
+}: {
+  challenge: Challenge
+  onClaim: () => void
+  claiming: boolean
+}) {
+  const p = challenge.my_progress
+  const isClaimable = p?.claimable ?? false
+  const isClaimed   = p?.reward_claimed ?? (!isClaimable && p?.is_completed)
+  const streak      = p?.current_count ?? 0
+  const target      = (challenge.criteria?.target_count as number) ?? 1
+
+  const rewardLabel = (() => {
+    const r = challenge.reward
+    if (r.type === 'coins')   return `${r.amount} coins`
+    if (r.type === 'cash')    return `₦${r.amount.toLocaleString()}`
+    if (r.type === 'free_spins') return `${r.amount} spin${r.amount > 1 ? 's' : ''}`
+    return `${r.amount}`
+  })()
+
+  return (
+    <div className={styles.streakCard}>
+      {/* Left: icon + streak count */}
+      <div className={styles.streakIcon}>
+        <span className={styles.streakEmoji}>🔥</span>
+        <span className={styles.streakCount}>{streak}</span>
+      </div>
+
+      {/* Middle: name + description */}
+      <div className={styles.streakMeta}>
+        <p className={styles.streakName}>{challenge.name}</p>
+        <p className={styles.streakSub}>
+          {isClaimed
+            ? `Day ${streak} — See you tomorrow!`
+            : isClaimable
+              ? `Day ${streak} — Ready to collect!`
+              : `${streak} / ${target} days`}
+        </p>
+      </div>
+
+      {/* Right: CTA */}
+      {isClaimable ? (
+        <button
+          className={styles.streakClaimBtn}
+          onClick={onClaim}
+          disabled={claiming}
+        >
+          {claiming ? '…' : `Claim ${rewardLabel}!`}
+        </button>
+      ) : isClaimed ? (
+        <span className={styles.streakDoneBtn}>Claimed ✓</span>
+      ) : (
+        <span className={styles.streakLockedBtn}>Locked</span>
+      )}
+    </div>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function SpinPage() {
@@ -46,6 +110,7 @@ export function SpinPage() {
   const navigate = useNavigate()
   const { haptic } = useTelegram()
   const { coinBalance, setBalance } = useWalletStore()
+  const toast = useMiniToast()
 
   // All active wheels — used to derive stake presets
   const [activeWheels, setActiveWheels] = useState<WheelRecord[]>([])
@@ -72,6 +137,10 @@ export function SpinPage() {
   const [dailyReward, setDailyReward] = useState<DailyRewardStatus | null>(null)
   const [claimingReward, setClaimingReward] = useState(false)
 
+  // Login / daily streak challenge (shown below the wheel)
+  const [loginChallenge, setLoginChallenge] = useState<Challenge | null>(null)
+  const [claimingChallenge, setClaimingChallenge] = useState(false)
+
   // Recent spins
   const [recentSpins, setRecentSpins] = useState<SpinResult[]>([])
 
@@ -84,6 +153,15 @@ export function SpinPage() {
   // Mute
   const [muted, setMuted] = useState(false)
 
+  // ── Bottom sheet ─────────────────────────────────────────────────────────
+  const PEEK = 90 // px visible when collapsed
+  const [sheetOpen, setSheetOpen]     = useState(false)
+  const [isDragging, setIsDragging]   = useState(false)
+  const [dragOffset, setDragOffset]   = useState(0)
+  const dragStartY    = useRef(0)
+  const dragStartOpen = useRef(false)
+  const sheetRef      = useRef<HTMLDivElement>(null)
+
   // ── Load active wheels + supplemental data on mount ───────────────────────
   useEffect(() => {
     Promise.allSettled([
@@ -92,7 +170,8 @@ export function SpinPage() {
       rewardsApi.status(),
       spinApi.history(1),
       kycApi.status(),
-    ]).then(([wheelsR, balR, rewardR, histR, kycR]) => {
+      challengesApi.list(),
+    ]).then(([wheelsR, balR, rewardR, histR, kycR, challengesR]) => {
       if (wheelsR.status === 'fulfilled') {
         const list = wheelsR.value
         setActiveWheels(list)
@@ -108,6 +187,13 @@ export function SpinPage() {
         setRecentSpins(Array.isArray(d) ? d.slice(0, 5) : (d?.results ?? []).slice(0, 5))
       }
       if (kycR.status === 'fulfilled') setKycOverall(kycR.value.overall_status)
+      if (challengesR.status === 'fulfilled') {
+        const all = challengesR.value.challenges ?? []
+        const streakChallenge = all.find(
+          (c) => c.type === 'daily_login' || c.type === 'login_streak'
+        ) ?? null
+        setLoginChallenge(streakChallenge)
+      }
       setLoadingWheels(false)
     })
   }, [setBalance])
@@ -185,6 +271,42 @@ export function SpinPage() {
       setClaimingReward(false)
     }
   }, [dailyReward, claimingReward, haptic, setBalance])
+
+  // ── Login streak challenge claim ─────────────────────────────────────────
+  const claimLoginChallenge = useCallback(async () => {
+    if (!loginChallenge || claimingChallenge) return
+    setClaimingChallenge(true)
+    try {
+      const res = await challengesApi.claim(loginChallenge.id)
+      toast.show(res.message ?? 'Reward claimed!', 'success')
+      haptic.notificationOccurred('success')
+      // Refetch wallet balance + updated challenge state
+      const [updated, bal] = await Promise.allSettled([
+        challengesApi.list(),
+        wallet.balance(),
+      ])
+      if (updated.status === 'fulfilled') {
+        const all = updated.value.challenges ?? []
+        const refreshed = all.find(
+          (c) => c.type === 'daily_login' || c.type === 'login_streak'
+        ) ?? null
+        setLoginChallenge(refreshed)
+      }
+      if (bal.status === 'fulfilled') {
+        const b = bal.value
+        setBalance(b.coin_balance, b.cash_balance, b.staked_balance)
+      }
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ??
+        err?.response?.data?.error ??
+        'Failed to claim reward.'
+      toast.show(msg, 'error')
+      haptic.notificationOccurred('error')
+    } finally {
+      setClaimingChallenge(false)
+    }
+  }, [loginChallenge, claimingChallenge, haptic, setBalance, toast])
 
   // ── Welcome spin ──────────────────────────────────────────────────────────
   const handleWelcomeSpin = useCallback(async () => {
@@ -291,6 +413,51 @@ export function SpinPage() {
     sounds.setMuted(next)
   }, [muted])
 
+  // ── Sheet drag handlers ───────────────────────────────────────────────────
+  const openSheet = useCallback(() => {
+    haptic.impactOccurred('light')
+    setSheetOpen(true)
+  }, [haptic])
+
+  const closeSheet = useCallback(() => setSheetOpen(false), [])
+
+  const handleDragStart = useCallback((e: React.TouchEvent) => {
+    dragStartY.current    = e.touches[0].clientY
+    dragStartOpen.current = sheetOpen
+    setIsDragging(true)
+    setDragOffset(0)
+  }, [sheetOpen])
+
+  const handleDragMove = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+    setDragOffset(e.touches[0].clientY - dragStartY.current)
+  }, [])
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false)
+    // snap open / closed based on drag direction and distance
+    if (dragStartOpen.current) {
+      setSheetOpen(dragOffset < 60)   // dragged down < 60px → stay open
+    } else {
+      setSheetOpen(dragOffset < -40)  // dragged up  > 40px → open
+    }
+    setDragOffset(0)
+  }, [dragOffset])
+
+  /** Returns the CSS transform string for the sheet at any point in time. */
+  function sheetTransform(): string {
+    const fullTranslate = (sheetRef.current?.offsetHeight ?? 440) - PEEK
+    if (!isDragging) {
+      return sheetOpen ? 'translateY(0)' : `translateY(${fullTranslate}px)`
+    }
+    // Real-time finger-following, clamped to valid range
+    if (dragStartOpen.current) {
+      return `translateY(${Math.max(0, Math.min(fullTranslate, dragOffset))}px)`
+    } else {
+      return `translateY(${Math.max(0, Math.min(fullTranslate, fullTranslate + dragOffset))}px)`
+    }
+  }
+
   // ── Derived ───────────────────────────────────────────────────────────────
   const canSpin =
     phase === 'idle' &&
@@ -395,12 +562,18 @@ export function SpinPage() {
     )
   }
 
+  // ── Peek summary derived values ───────────────────────────────────────────
+  const loginClaimable  = loginChallenge?.my_progress?.claimable ?? false
+  const dailyClaimable  = dailyReward?.can_claim ?? false
+  const hasClaimable    = loginClaimable || dailyClaimable
+  const loginStreak     = loginChallenge?.my_progress?.current_count ?? 0
+
   return (
     <>
       <div className={styles.page}>
 
-        {/* ══ FIXED TOP — topBar + welcomeBanner + spinCard ══ */}
-        <div className={styles.fixedTop}>
+        {/* ══ FULL-SCREEN SPIN CONTENT ══ */}
+        <div className={styles.spinContent}>
 
           {/* ── Top bar ── */}
           <div className={styles.topBar}>
@@ -442,9 +615,8 @@ export function SpinPage() {
             </button>
           )}
 
-          {/* ── Spin card ── */}
-          <div className={styles.spinCard}>
-            <p className={styles.spinCardTitle}>Enter stake and spin!</p>
+          {/* ── Spin area (fills remaining space) ── */}
+          <div className={styles.spinArea}>
 
             {/* Wheel canvas */}
             <div className={styles.wheelWrapper}>
@@ -457,7 +629,6 @@ export function SpinPage() {
                 onTick={handleTick}
                 engineRef={engineRef}
               />
-
               {phase === 'preparing' && (
                 <div className={styles.wheelOverlay}>
                   <div className={styles.spinner} />
@@ -506,8 +677,6 @@ export function SpinPage() {
                     disabled={phase !== 'idle'}
                   />
                 </div>
-
-                {/* Horizontally scrollable preset chips */}
                 <div className={styles.quickRow}>
                   {stakePresets.slice(0, 8).map((amt) => (
                     <button
@@ -524,7 +693,7 @@ export function SpinPage() {
               </div>
             )}
 
-            {/* ── Error inside card ── */}
+            {/* ── Error ── */}
             {phase === 'error' && spinError && (
               <div className={styles.errorBox}>
                 {spinError.code === 'INSUFFICIENT_FUNDS' ? (
@@ -555,73 +724,133 @@ export function SpinPage() {
               {phase === 'preparing' ? 'Preparing…' :
                phase === 'spinning'  ? 'Spinning…'  : 'SPIN'}
             </button>
+
+          </div>{/* end .spinArea */}
+
+        </div>{/* end .spinContent */}
+
+        {/* ══ DIM OVERLAY — tap to close sheet ══ */}
+        {sheetOpen && (
+          <div className={styles.dimOverlay} onClick={closeSheet} />
+        )}
+
+        {/* ══ PULL-UP BOTTOM SHEET ══ */}
+        <div
+          ref={sheetRef}
+          className={styles.sheet}
+          style={{
+            transform: sheetTransform(),
+            transition: isDragging ? 'none' : 'transform 0.42s cubic-bezier(0.32, 0.72, 0, 1)',
+          }}
+        >
+          {/* ── Peek area: handle + summary row ── */}
+          <div
+            className={styles.sheetPeek}
+            onTouchStart={handleDragStart}
+            onTouchMove={handleDragMove}
+            onTouchEnd={handleDragEnd}
+            onClick={sheetOpen ? closeSheet : openSheet}
+          >
+            <div className={styles.sheetHandleBar} />
+            <div className={styles.sheetPeekRow}>
+              <span className={styles.sheetPeekTitle}>
+                🎁 Rewards
+                {hasClaimable && <span className={styles.sheetPeekDot} />}
+              </span>
+              <div className={styles.sheetPeekChips}>
+                {loginChallenge && (
+                  <span className={`${styles.sheetPeekChip} ${loginClaimable ? styles.sheetPeekChipGlow : ''}`}>
+                    🔥 Day {loginStreak}
+                  </span>
+                )}
+                {dailyReward && (
+                  <span className={`${styles.sheetPeekChip} ${dailyClaimable ? styles.sheetPeekChipGlow : ''}`}>
+                    🪙 Daily
+                  </span>
+                )}
+              </div>
+              <span className={`${styles.sheetChevron} ${sheetOpen ? styles.sheetChevronOpen : ''}`}>
+                ›
+              </span>
+            </div>
           </div>
 
-        </div>{/* end .fixedTop */}
+          {/* ── Scrollable sheet content ── */}
+          <div className={styles.sheetScroll}>
 
-        {/* ══ SCROLLABLE AREA — daily reward + recent spins ══ */}
-        <div className={styles.scrollArea}>
-
-          {/* ── Daily reward ── */}
-          {dailyReward && (
-            <div className={styles.section}>
-              <p className={styles.sectionTitle}>Daily Reward</p>
-              <div className={styles.dayStrip}>
-                {DAY_MULTIPLIERS.map((mult, idx) => {
-                  const day = idx + 1
-                  const streak = dailyReward.current_streak
-                  const claimed = day <= streak
-                  const canClaim = day === streak + 1 && dailyReward.can_claim
-                  return (
-                    <div key={day} className={`${styles.dayCard} ${claimed ? styles.dayCardClaimed : ''} ${canClaim ? styles.dayCardActive : ''}`}>
-                      <p className={styles.dayLabel}>Day {day}</p>
-                      <span className={styles.dayIcon}>🪙</span>
-                      <p className={styles.dayMult}>x{mult}</p>
-                      {claimed ? (
-                        <span className={styles.dayCheck}>✓</span>
-                      ) : (
-                        <button
-                          className={`${styles.claimBtn} ${!canClaim ? styles.claimBtnLocked : ''}`}
-                          onClick={canClaim ? claimDailyReward : undefined}
-                          disabled={!canClaim || claimingReward}
-                        >
-                          {claimingReward && canClaim ? '…' : 'Claim'}
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
+            {/* Login streak */}
+            {loginChallenge && (
+              <div className={styles.sheetSection}>
+                <p className={styles.sheetSectionTitle}>📅 Login Streak</p>
+                <LoginStreakCard
+                  challenge={loginChallenge}
+                  onClaim={claimLoginChallenge}
+                  claiming={claimingChallenge}
+                />
               </div>
-            </div>
-          )}
+            )}
 
-          {/* ── Recent spins ── */}
-          {recentSpins.length > 0 && (
-            <div className={styles.section}>
-              <p className={styles.sectionTitle}>Recent Spins</p>
-              <div className={styles.recentList}>
-                {recentSpins.map((s) => (
-                  <div key={s.id} className={styles.recentRow}>
-                    <div>
-                      <p className={styles.recentStake}>
-                        Stake: <strong>{formatCoins(s.stake_amount)} coins</strong>
-                      </p>
-                      <p className={styles.recentMult}>{s.segment_label} Multiplier</p>
-                    </div>
-                    <span className={`${styles.recentOutcome} ${styles[`oc_${s.outcome}`]}`}>
-                      {s.outcome === 'win'
-                        ? `+${formatNaira(s.payout_amount)}`
-                        : s.outcome === 'loss'
-                          ? 'LOSS'
-                          : formatNaira(s.payout_amount)}
-                    </span>
-                  </div>
-                ))}
+            {/* Daily reward */}
+            {dailyReward && (
+              <div className={styles.sheetSection}>
+                <p className={styles.sheetSectionTitle}>Daily Reward</p>
+                <div className={styles.dayStrip}>
+                  {DAY_MULTIPLIERS.map((mult, idx) => {
+                    const day     = idx + 1
+                    const streak  = dailyReward.current_streak
+                    const claimed = day <= streak
+                    const canClaim = day === streak + 1 && dailyReward.can_claim
+                    return (
+                      <div key={day} className={`${styles.dayCard} ${claimed ? styles.dayCardClaimed : ''} ${canClaim ? styles.dayCardActive : ''}`}>
+                        <p className={styles.dayLabel}>Day {day}</p>
+                        <span className={styles.dayIcon}>🪙</span>
+                        <p className={styles.dayMult}>x{mult}</p>
+                        {claimed ? (
+                          <span className={styles.dayCheck}>✓</span>
+                        ) : (
+                          <button
+                            className={`${styles.claimBtn} ${!canClaim ? styles.claimBtnLocked : ''}`}
+                            onClick={canClaim ? claimDailyReward : undefined}
+                            disabled={!canClaim || claimingReward}
+                          >
+                            {claimingReward && canClaim ? '…' : 'Claim'}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-        </div>{/* end .scrollArea */}
+            {/* Recent spins */}
+            {recentSpins.length > 0 && (
+              <div className={styles.sheetSection}>
+                <p className={styles.sheetSectionTitle}>Recent Spins</p>
+                <div className={styles.recentList}>
+                  {recentSpins.map((s) => (
+                    <div key={s.id} className={styles.recentRow}>
+                      <div>
+                        <p className={styles.recentStake}>
+                          Stake: <strong>{formatCoins(s.stake_amount)} coins</strong>
+                        </p>
+                        <p className={styles.recentMult}>{s.segment_label} Multiplier</p>
+                      </div>
+                      <span className={`${styles.recentOutcome} ${styles[`oc_${s.outcome}`]}`}>
+                        {s.outcome === 'win'
+                          ? `+${formatNaira(s.payout_amount)}`
+                          : s.outcome === 'loss'
+                            ? 'LOSS'
+                            : formatNaira(s.payout_amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </div>{/* end .sheetScroll */}
+        </div>{/* end .sheet */}
 
       </div>
 
@@ -631,6 +860,8 @@ export function SpinPage() {
           onSuccess={handleFundSuccess}
         />
       )}
+
+      <toast.View />
     </>
   )
 }

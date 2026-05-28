@@ -265,8 +265,14 @@ export interface ChallengeProgress {
   completed_at: string | null
   reward_claimed: boolean
   reward_claimed_at: string | null
+  /** True when the challenge is complete and the reward has not yet been claimed. */
+  claimable: boolean
   window_start: string
   window_end: string | null
+}
+
+export interface ChallengeClaimResponse {
+  message: string
 }
 
 export interface Challenge {

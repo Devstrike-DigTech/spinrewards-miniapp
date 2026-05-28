@@ -171,6 +171,24 @@
   border: 1px solid rgba(61, 232, 138, 0.3);
 }
 
+/* Glowing "Claim!" button shown when a reward is ready to collect */
+.btnClaim {
+  background: linear-gradient(135deg, #c9a028, #e8c050);
+  color: #0a0a1a;
+  box-shadow: 0 0 12px rgba(201, 160, 40, 0.5);
+  animation: claimPulse 1.8s ease-in-out infinite;
+}
+
+.btnClaim:disabled {
+  opacity: 0.6;
+  animation: none;
+}
+
+@keyframes claimPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(201, 160, 40, 0.45); }
+  50%       { box-shadow: 0 0 22px rgba(201, 160, 40, 0.85); }
+}
+
 /* ── Referral list inside card ── */
 .referralList {
   display: flex;
