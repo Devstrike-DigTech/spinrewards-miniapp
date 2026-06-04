@@ -224,6 +224,200 @@
 .submitBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 .submitBtn:active:not(:disabled) { opacity: 0.85; }
 
+/* ── Saved accounts list ── */
+.accountsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.accountItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  background: #141e35;
+  border: 1px solid #1e2d4d;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.accountItemSelected {
+  border-color: #c9a028;
+  background: #161200;
+}
+
+.accountRadio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #3a4d7a;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.accountRadioSelected {
+  border-color: #c9a028;
+  background: #c9a028;
+  box-shadow: inset 0 0 0 3px #161200;
+}
+
+.accountInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.accountBank {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accountNumber {
+  font-size: 13px;
+  color: #a0a0c0;
+  margin-top: 1px;
+  font-family: monospace;
+  letter-spacing: 1px;
+}
+
+.accountName {
+  font-size: 12px;
+  color: #60607a;
+  margin-top: 2px;
+}
+
+.defaultBadge {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(201, 160, 40, 0.15);
+  color: #c9a028;
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+.accountDeleteBtn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(232, 61, 61, 0.1);
+  color: #e83d3d;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s ease;
+}
+.accountDeleteBtn:active { opacity: 0.7; }
+.accountDeleteBtn:disabled { opacity: 0.35; }
+
+.addAccountBtn {
+  padding: 12px;
+  border-radius: 12px;
+  background: none;
+  border: 1.5px dashed #1e2d4d;
+  color: #c9a028;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  width: 100%;
+  transition: border-color 0.15s ease;
+}
+.addAccountBtn:active { border-color: #c9a028; }
+
+/* ── Bank form ── */
+.bankFormWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.backToAccountsBtn {
+  font-size: 13px;
+  color: #c9a028;
+  font-weight: 600;
+  text-align: left;
+  padding: 0;
+}
+
+.bankFormGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bankFormLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #c8c8e8;
+}
+
+.bankSelect {
+  width: 100%;
+  height: 46px;
+  background: #141e35;
+  border: 1px solid #1e2d4d;
+  border-radius: 12px;
+  padding: 0 14px;
+  color: #ffffff;
+  font-size: 14px;
+  font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.bankInput {
+  width: 100%;
+  height: 46px;
+  background: #141e35;
+  border: 1px solid #1e2d4d;
+  border-radius: 12px;
+  padding: 0 14px;
+  color: #ffffff;
+  font-size: 16px;
+  font-family: monospace;
+  letter-spacing: 1px;
+}
+.bankInput:focus { outline: none; border-color: #3a4d7a; }
+
+.bankInputHint {
+  font-size: 11px;
+  color: #60607a;
+  line-height: 1.4;
+}
+
+/* ── Crypto coming soon ── */
+.cryptoComingSoon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #141e35;
+  border: 1px dashed #1e2d4d;
+  border-radius: 12px;
+  font-size: 13px;
+  color: #60607a;
+  opacity: 0.6;
+}
+
+/* ── Name mismatch ── */
+.mismatchName {
+  font-size: 20px;
+  font-weight: 800;
+  color: #e83d3d;
+  background: rgba(232, 61, 61, 0.08);
+  border: 1px solid rgba(232, 61, 61, 0.2);
+  border-radius: 12px;
+  padding: 12px 24px;
+  text-align: center;
+  width: 100%;
+}
+
 /* ── Empty states ── */
 .emptyState {
   display: flex;

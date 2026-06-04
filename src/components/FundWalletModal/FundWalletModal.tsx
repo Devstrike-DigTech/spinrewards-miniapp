@@ -37,7 +37,7 @@ export function FundWalletModal({ onClose, onSuccess }: Props) {
 
     try {
       const record = await deposits.initiate({
-        amount: num.toFixed(2),
+        amount: num,
         provider,
       })
       setDeposit(record)

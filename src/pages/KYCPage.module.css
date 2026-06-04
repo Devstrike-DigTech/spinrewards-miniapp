@@ -49,6 +49,53 @@
   font-weight: 700;
 }
 
+/* ── NIN Verified locked card ── */
+.ninVerifiedCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: rgba(61, 232, 138, 0.06);
+  border: 1px solid rgba(61, 232, 138, 0.25);
+  border-radius: 16px;
+  padding: 20px 16px;
+}
+
+.ninVerifiedIcon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  background: rgba(61, 232, 138, 0.1);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ninVerifiedContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.ninVerifiedTitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: #3de88a;
+  margin-bottom: 4px;
+}
+
+.ninVerifiedName {
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+}
+
+.ninVerifiedSub {
+  font-size: 13px;
+  color: #60607a;
+}
+
 /* ── Page header ── */
 .pageHeader {
   display: flex;

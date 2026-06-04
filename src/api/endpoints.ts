@@ -2,16 +2,18 @@ import { publicClient, apiClient } from './client'
 import type {
   AuthResponse,
   WalletBalance,
+  PublicSettings,
   SpinRequest,
   SpinResult,
   WheelRecord,
   ReferralInfo,
   DepositRequest,
   DepositRecord,
-  VirtualAccount,
+  CryptoCurrency,
   PaginatedResponse,
   WithdrawalRecord,
-  WithdrawalLimits,
+  WithdrawPayload,
+  SavedBankAccount,
   KYCStatusResponse,
   KYCBank,
   KYCDocumentUploadResponse,
@@ -22,17 +24,17 @@ import type {
   ChallengeClaimResponse,
   MyCodeData,
   MyReferralsData,
+  TransactionRecord,
 } from '@/types'
 
-// Auth
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
 export const auth = {
   telegram: (initData: string): Promise<AuthResponse> =>
     publicClient
       .post('/auth/telegram/', { init_data: initData })
       .then((r) => {
-        // Backend wraps response in { data: { ... } } — unwrap if present
         const raw = r.data?.data ?? r.data
-        // Backend uses access_token/refresh_token — normalise to access/refresh
         return {
           user: raw.user,
           tokens: {
@@ -43,45 +45,57 @@ export const auth = {
       }),
 }
 
-// User
+// ── User ──────────────────────────────────────────────────────────────────────
+
 export const users = {
   me: (): Promise<User> =>
     apiClient.get('/users/me/').then((r) => r.data?.data ?? r.data),
 }
 
-// Wallet
+// ── Public Settings (no auth, cached for session) ────────────────────────────
+
+export const settings = {
+  /** Fetch dynamic app config. Call once on launch and cache in settingsStore. */
+  public: (): Promise<PublicSettings> =>
+    publicClient.get('/settings/public/').then((r) => r.data?.data ?? r.data),
+}
+
+// ── Wallet ────────────────────────────────────────────────────────────────────
+
 export const wallet = {
   balance: (): Promise<WalletBalance> =>
     apiClient.get('/wallet/').then((r) => r.data?.data ?? r.data),
 
-  transactions: (page = 1, pageSize = 20) =>
+  transactions: (page = 1, pageSize = 20): Promise<PaginatedResponse<TransactionRecord>> =>
     apiClient
       .get('/wallet/transactions/', { params: { page, page_size: pageSize } })
       .then((r) => r.data?.data ?? r.data),
 }
 
-// Deposits
+// ── Deposits ─────────────────────────────────────────────────────────────────
+
 export const deposits = {
   /** Initiate a deposit. Returns provider-specific fields (payment_url / payment_address). */
   initiate: (payload: DepositRequest): Promise<DepositRecord> =>
-    apiClient.post('/deposits/', payload).then((r) => r.data?.data ?? r.data),
+    apiClient.post('/payments/deposits/', payload).then((r) => r.data?.data ?? r.data),
 
   /** Poll this after Paystack redirect until status !== 'pending'. */
   get: (id: string): Promise<DepositRecord> =>
-    apiClient.get(`/deposits/${id}/`).then((r) => r.data?.data ?? r.data),
+    apiClient.get(`/payments/deposits/${id}/`).then((r) => r.data?.data ?? r.data),
 
   /** Paginated deposit history. */
   list: (page = 1): Promise<PaginatedResponse<DepositRecord>> =>
     apiClient
-      .get('/deposits/list/', { params: { page } })
+      .get('/payments/deposits/', { params: { page } })
       .then((r) => r.data?.data ?? r.data),
 
-  /** Get (or create) the user's permanent Monnify virtual account. */
-  virtualAccount: (): Promise<VirtualAccount> =>
-    apiClient.get('/deposits/virtual-account/').then((r) => r.data?.data ?? r.data),
+  /** Available crypto currencies for the NOWPayments flow. */
+  cryptoCurrencies: (): Promise<{ currencies: CryptoCurrency[] }> =>
+    apiClient.get('/payments/crypto/currencies/').then((r) => r.data?.data ?? r.data),
 }
 
-// Spin
+// ── Spin ──────────────────────────────────────────────────────────────────────
+
 export const spin = {
   /**
    * List ALL wheels (includes inactive). Use activeWheels() for normal user flow.
@@ -113,15 +127,17 @@ export const spin = {
       .get('/spin/wheels/for-stake/', { params: { amount } })
       .then((r) => {
         const d = r.data?.data ?? r.data
-        // Backend wraps in { wheel: { ... } }
         return d?.wheel ?? d
       }),
 
-  /** Execute a spin. Call BEFORE starting animation. Outcome is locked here. */
+  /**
+   * Execute a spin. Call BEFORE starting animation — outcome is locked here.
+   * Requires source_wallet to specify which coin balance is staked.
+   */
   execute: (payload: SpinRequest): Promise<SpinResult> =>
     apiClient.post('/spin/', payload).then((r) => r.data?.data ?? r.data),
 
-  /** Free one-time welcome spin. No wheel_id or stake needed. */
+  /** Free one-time welcome spin. No wheel_id, stake, or source_wallet needed. */
   welcome: (clientSeed?: string): Promise<SpinResult> =>
     apiClient
       .post('/spin/welcome/', clientSeed ? { client_seed: clientSeed } : {})
@@ -134,22 +150,26 @@ export const spin = {
       .then((r) => r.data?.data ?? r.data),
 }
 
-// Referrals
+// ── Referrals ─────────────────────────────────────────────────────────────────
+
 export const referrals = {
   info: (): Promise<ReferralInfo> =>
-    apiClient.get<ReferralInfo>('/referrals/').then((r) => r.data),
+    apiClient.get('/referrals/').then((r) => r.data?.data ?? r.data),
 
+  /** My referral code, share URL, and summary stats. */
   myCode: (): Promise<MyCodeData> =>
-    apiClient.get('/referrals/my-code/').then((r) => r.data?.data ?? r.data),
+    apiClient.get('/referrals/me/').then((r) => r.data?.data ?? r.data),
 
+  /** List of users I have referred with their statuses. */
   myReferrals: (): Promise<MyReferralsData> =>
-    apiClient.get('/referrals/my-referrals/').then((r) => r.data?.data ?? r.data),
+    apiClient.get('/referrals/list/').then((r) => r.data?.data ?? r.data),
 
   apply: (code: string): Promise<{ message: string; referral_id: string; referrer_name: string }> =>
-    apiClient.post('/referrals/apply/', { code }).then((r) => r.data?.data ?? r.data),
+    apiClient.post('/referrals/apply/', { referral_code: code }).then((r) => r.data?.data ?? r.data),
 }
 
-// Challenges
+// ── Challenges ────────────────────────────────────────────────────────────────
+
 export const challenges = {
   list: (): Promise<{ challenges: Challenge[] }> =>
     apiClient.get('/challenges/').then((r) => r.data?.data ?? r.data),
@@ -159,8 +179,8 @@ export const challenges = {
 
   /**
    * Manually claim the reward for a completed challenge.
-   * Endpoint: POST /challenges/{id}/claim/
-   * Returns { message: "You earned 200 coins!" }
+   * Only callable when my_progress.claimable === true.
+   * Returns credited_to_label for the toast message.
    */
   claim: (id: string): Promise<ChallengeClaimResponse> =>
     apiClient
@@ -168,23 +188,47 @@ export const challenges = {
       .then((r) => r.data?.data ?? r.data),
 }
 
-// Withdrawals
+// ── Withdrawals ───────────────────────────────────────────────────────────────
+
 export const withdrawals = {
-  /** Current limits + live balance. Call first when opening the withdraw screen. */
-  limits: (): Promise<WithdrawalLimits> =>
-    apiClient.get('/withdrawals/limits/').then((r) => r.data?.data ?? r.data),
+  /** Nigerian bank list for the dropdown (server-cached 24 h). */
+  banks: (): Promise<{ banks: KYCBank[] }> =>
+    apiClient.get('/withdrawals/banks/').then((r) => r.data?.data ?? r.data),
+
+  /** List the user's saved & active bank accounts. Empty array = first withdrawal. */
+  savedAccounts: (): Promise<{ accounts: SavedBankAccount[] }> =>
+    apiClient.get('/withdrawals/saved-accounts/').then((r) => r.data?.data ?? r.data),
 
   /**
-   * Request a withdrawal. `forceManualReview` routes to the /manual-review/ endpoint
-   * (admin always reviews, regardless of amount). Set to false to use the tiered auto-flow.
-   * Currently defaulting to true (pre-launch mode) — flip to false when ready.
+   * Verify a bank account against the user's KYC name and save it.
+   * Throws NAME_MISMATCH (400) if names don't match.
    */
-  request: (amount: string, forceManualReview = true): Promise<WithdrawalRecord> => {
-    const endpoint = forceManualReview
-      ? '/withdrawals/manual-review/'
-      : '/withdrawals/'
-    return apiClient.post(endpoint, { amount }).then((r) => r.data?.data ?? r.data)
-  },
+  addSavedAccount: (bankCode: string, accountNumber: string): Promise<SavedBankAccount> =>
+    apiClient
+      .post('/withdrawals/saved-accounts/', {
+        bank_code: bankCode,
+        account_number: accountNumber,
+      })
+      .then((r) => r.data?.data ?? r.data),
+
+  /** Soft-delete a saved account. */
+  deleteSavedAccount: (id: string): Promise<void> =>
+    apiClient.delete(`/withdrawals/saved-accounts/${id}/`).then(() => undefined),
+
+  /** Mark an account as the default for future withdrawals. */
+  setDefault: (id: string): Promise<SavedBankAccount> =>
+    apiClient
+      .post(`/withdrawals/saved-accounts/${id}/set-default/`)
+      .then((r) => r.data?.data ?? r.data),
+
+  /**
+   * Submit a withdrawal.
+   * Pass { amount, saved_account_id } to use a saved account, or
+   * { amount, bank_code, account_number } for inline verification + save.
+   * Throws NAME_MISMATCH, KYC_REQUIRED, INSUFFICIENT_FUNDS, BELOW_MINIMUM.
+   */
+  submit: (payload: WithdrawPayload): Promise<WithdrawalRecord> =>
+    apiClient.post('/withdrawals/', payload).then((r) => r.data?.data ?? r.data),
 
   /** Paginated withdrawal history, newest first. */
   list: (page = 1): Promise<PaginatedResponse<WithdrawalRecord>> =>
@@ -203,13 +247,14 @@ export const withdrawals = {
       .then((r) => r.data?.data ?? r.data),
 }
 
-// KYC
+// ── KYC ───────────────────────────────────────────────────────────────────────
+
 export const kyc = {
   /** Current KYC status — always call first when opening the KYC screen. */
   status: (): Promise<KYCStatusResponse> =>
     apiClient.get('/kyc/status/').then((r) => r.data?.data ?? r.data),
 
-  /** Nigerian bank list for the dropdown — server-cached 24 h. */
+  /** Nigerian bank list (alias of /withdrawals/banks/ for compatibility). */
   banks: (): Promise<KYCBank[]> =>
     apiClient.get('/kyc/banks/').then((r) => {
       const d = r.data?.data ?? r.data
@@ -232,30 +277,20 @@ export const kyc = {
   },
 
   /**
-   * Live bank account lookup — debounce 300 ms before calling.
-   * Triggers when bank_code AND account_number (10 digits) are both filled.
-   * Returns the account name string.
+   * Submit (or resubmit) the KYC form.
+   * Only collects: full_name, nin, date_of_birth, phone_number, document_id.
+   * BVN and bank account are NO LONGER part of KYC — bank verification happens at withdrawal.
    */
-  resolveBank: (bankCode: string, accountNumber: string): Promise<string> =>
-    apiClient
-      .post('/kyc/resolve-bank/', { bank_code: bankCode, account_number: accountNumber })
-      .then((r) => {
-        const d = r.data?.data ?? r.data
-        return (d?.account_name ?? d) as string
-      }),
-
-  /** Submit (or resubmit) the KYC form. Returns full status snapshot. */
   submit: (payload: KYCSubmitPayload): Promise<KYCStatusResponse> =>
     apiClient.post('/kyc/submit/', payload).then((r) => r.data?.data ?? r.data),
 }
 
-// Daily reward
+// ── Daily reward (legacy — may be superseded by challenges system) ─────────────
+
 export const rewards = {
   status: (): Promise<DailyRewardStatus> =>
-    apiClient.get<DailyRewardStatus>('/rewards/daily/').then((r) => r.data),
+    apiClient.get('/rewards/daily/').then((r) => r.data?.data ?? r.data),
 
   claim: (): Promise<{ amount_credited: number }> =>
-    apiClient
-      .post<{ amount_credited: number }>('/rewards/daily/claim/')
-      .then((r) => r.data),
+    apiClient.post('/rewards/daily/claim/').then((r) => r.data?.data ?? r.data),
 }

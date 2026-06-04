@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { challenges as challengesApi, referrals as referralsApi } from '@/api/endpoints'
-import type { Challenge, MyReferralEntry, MyCodeData } from '@/types'
+import { challenges as challengesApi, referrals as referralsApi, wallet } from '@/api/endpoints'
+import { useWalletStore } from '@/store/walletStore'
+import type { Challenge, MyReferralEntry, MyCodeData, ChallengeProgress } from '@/types'
 import { ShareSheet } from '@/components/ShareSheet/ShareSheet'
 import { useMiniToast } from '@/components/MiniToast/MiniToast'
 import styles from './RewardsPage.module.css'
@@ -10,22 +11,34 @@ import styles from './RewardsPage.module.css'
 
 function rewardLabel(reward: Challenge['reward']) {
   switch (reward.type) {
-    case 'coins': return `${reward.amount} coins`
-    case 'cash': return `₦${reward.amount.toLocaleString()}`
-    case 'free_spins': return `${reward.amount} spin${reward.amount > 1 ? 's' : ''}`
+    case 'bonus_credit':
+    case 'coins':        return `${reward.amount} Bonus Coins`
+    case 'deposit_credit':
+    case 'cash':         return `₦${Number(reward.amount).toLocaleString()} cash`
+    case 'free_spins':   return `${reward.amount} spin${reward.amount > 1 ? 's' : ''}`
     case 'multiplier_boost': return `${reward.amount}×`
-    default: return `${reward.amount}`
+    default:             return `${reward.amount}`
   }
 }
 
 function rewardBadge(reward: Challenge['reward']) {
   switch (reward.type) {
-    case 'coins': return `x${reward.amount}`
-    case 'cash': return `₦${reward.amount.toLocaleString()}`
-    case 'free_spins': return `${reward.amount} spin${reward.amount > 1 ? 's' : ''}`
+    case 'bonus_credit':
+    case 'coins':        return `🎁${reward.amount}`
+    case 'deposit_credit':
+    case 'cash':         return `₦${Number(reward.amount).toLocaleString()}`
+    case 'free_spins':   return `${reward.amount} spin${reward.amount > 1 ? 's' : ''}`
     case 'multiplier_boost': return `${reward.amount}×`
-    default: return `${reward.amount}`
+    default:             return `${reward.amount}`
   }
+}
+
+/** Claimable first → in-progress → not-started → claimed */
+function challengeSortScore(p: ChallengeProgress | null): number {
+  if (p?.claimable)      return 0
+  if (p && !p.is_completed) return 1
+  if (!p)                return 2
+  return 3 // reward_claimed
 }
 
 function challengeIcon(type: string) {
@@ -212,7 +225,7 @@ function ReferralBonusCard({
                     <span className={styles.coinBadge}>{rewardBadge(reward)}</span>
                   </div>
                   <div className={styles.cardMeta}>
-                    <p className={styles.cardDescription}>{ref.referred_user.name}</p>
+                    <p className={styles.cardDescription}>{ref.referred_user_name}</p>
                     <p className={styles.cardSub}>{referralStatusLabel(ref.status)}</p>
                   </div>
                   <button
@@ -242,6 +255,7 @@ function ReferralBonusCard({
 export function RewardsPage() {
   const navigate = useNavigate()
   const toast = useMiniToast()
+  const { setBalance } = useWalletStore()
 
   const [challengesList, setChallengesList] = useState<Challenge[]>([])
   const [referralList, setReferralList] = useState<MyReferralEntry[]>([])
@@ -278,10 +292,19 @@ export function RewardsPage() {
     setClaimingId(challengeId)
     try {
       const res = await challengesApi.claim(challengeId)
-      toast.show(res.message ?? 'Reward claimed!', 'success')
-      // Refetch to flip claimable → claimed on all cards
-      const updated = await challengesApi.list()
+      // Use credited_to_label for a specific toast e.g. "You earned 50 Bonus Coins!"
+      const msg = res.credited_to_label
+        ? `You earned ${res.amount} ${res.credited_to_label}!`
+        : res.message ?? 'Reward claimed!'
+      toast.show(msg, 'success')
+
+      // Refresh challenges AND wallet balance in parallel
+      const [updated, bal] = await Promise.all([
+        challengesApi.list(),
+        wallet.balance(),
+      ])
       setChallengesList(updated.challenges ?? [])
+      setBalance(bal)
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ??
@@ -291,14 +314,14 @@ export function RewardsPage() {
     } finally {
       setClaimingId(null)
     }
-  }, [claimingId, toast])
+  }, [claimingId, toast, setBalance])
 
   function handleWelcomeSpin() {
     navigate('/')
   }
 
   function handleShare() {
-    if (referralCode?.code) {
+    if (referralCode?.referral_code) {
       setShareSheetOpen(true)
     } else {
       navigate('/profile')
@@ -314,7 +337,10 @@ export function RewardsPage() {
   }
 
   const referralChallenge = challengesList.find((c) => c.type === 'referral') ?? null
-  const otherChallenges = challengesList.filter((c) => c.type !== 'referral')
+  // Sort: claimable → in-progress → not-started → claimed
+  const otherChallenges = [...challengesList]
+    .filter((c) => c.type !== 'referral')
+    .sort((a, b) => challengeSortScore(a.my_progress) - challengeSortScore(b.my_progress))
 
   return (
     <div className={styles.page}>
@@ -345,9 +371,9 @@ export function RewardsPage() {
       {shareSheetOpen && referralCode && (
         <ShareSheet
           data={{
-            code: referralCode.code,
+            code: referralCode.referral_code,
             shareUrl: referralCode.share_url,
-            text: `Join me on Spin Rewards and earn bonus coins! Use my referral code: ${referralCode.code}`,
+            text: `Join me on Spin Rewards and earn bonus coins! Use my referral code: ${referralCode.referral_code}`,
           }}
           onClose={() => setShareSheetOpen(false)}
         />

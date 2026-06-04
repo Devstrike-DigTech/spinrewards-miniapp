@@ -110,6 +110,13 @@
   letter-spacing: 0.5px;
 }
 
+.referralCode {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--color-accent-gold);
+  letter-spacing: 2px;
+}
+
 .link {
   font-size: 13px;
   color: var(--color-accent-teal);

@@ -389,6 +389,73 @@
   flex-shrink: 0;
 }
 
+/* ── Source wallet picker ── */
+.walletPicker {
+  display: flex;
+  gap: 8px;
+}
+
+.walletPickerOption {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #0a0a1a;
+  border: 1px solid #1e2d4d;
+  text-align: left;
+  transition: all 0.15s ease;
+  min-width: 0;
+}
+
+.walletPickerOption:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.walletPickerSelected {
+  border-color: #c9a028;
+  background: #141000;
+}
+
+.walletPickerRadio {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #1e2d4d;
+  flex-shrink: 0;
+  position: relative;
+  transition: border-color 0.15s ease;
+}
+
+.walletPickerSelected .walletPickerRadio {
+  border-color: #c9a028;
+  background: #c9a028;
+  box-shadow: inset 0 0 0 3px #141000;
+}
+
+.walletPickerIcon { font-size: 16px; flex-shrink: 0; }
+
+.walletPickerLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #a0a0c0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.walletPickerSelected .walletPickerLabel { color: #ffffff; }
+
+.walletPickerBal {
+  font-size: 11px;
+  font-weight: 700;
+  color: #c9a028;
+  display: block;
+  margin-top: 1px;
+}
+
 /* ── Stake section ── */
 .stakeSection { display: flex; flex-direction: column; gap: 6px; }
 

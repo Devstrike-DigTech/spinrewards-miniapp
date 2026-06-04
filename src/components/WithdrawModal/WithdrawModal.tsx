@@ -69,7 +69,11 @@ export function WithdrawModal({ cashBalance, onClose, onSuccess }: Props) {
     setStage('loading')
 
     try {
-      await withdrawals.request(num.toFixed(2))
+      await withdrawals.submit({
+        amount: num,
+        bank_code: bankCode,
+        account_number: accountNumber,
+      })
       setStage('success')
       onSuccess()
     } catch (err: any) {

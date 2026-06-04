@@ -70,6 +70,11 @@
   gap: 12px;
 }
 
+.cardBonus {
+  background: linear-gradient(135deg, #141e35, #1a2a1a);
+  border-color: rgba(61, 232, 138, 0.2);
+}
+
 .cardEarnings {
   background: linear-gradient(135deg, #141e35, #1a1428);
   border-color: #2a1f4a;
@@ -107,6 +112,13 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.cardSub {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 3px;
+  font-weight: 400;
 }
 
 .cardAction {
