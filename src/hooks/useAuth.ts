@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { auth, users, referrals } from '@/api/endpoints'
+import { auth, users, referrals, settings } from '@/api/endpoints'
 import { useAuthStore } from '@/store/authStore'
+import { useSettingsStore } from '@/store/settingsStore'
 import { useTelegram } from './useTelegram'
 
 const REFERRAL_APPLIED_KEY = 'sr_referral_applied'
@@ -52,6 +53,7 @@ export function useAuth() {
   useTelegram() // still call it so WebApp.ready() / WebApp.expand() fires
   const { setAuth, setTokens, clearAuth, isAuthenticated, tokens, user } =
     useAuthStore()
+  const { setSettings } = useSettingsStore()
 
   useEffect(() => {
     // cancelled flag prevents the first StrictMode effect invocation from
@@ -83,6 +85,8 @@ export function useAuth() {
             const me = await users.me()
             if (cancelled) return
             setAuth(me, tokens)
+            // Bootstrap public settings for returning users too (fire-and-forget)
+            settings.public().then(setSettings).catch(() => { /* use defaults */ })
             setIsLoading(false)
             return
           } catch {
@@ -143,10 +147,13 @@ export function useAuth() {
         setAuth(authUser, authTokens)
         setTokens(authTokens)
 
+        // Bootstrap public settings (fire-and-forget — non-blocking)
+        settings.public().then(setSettings).catch(() => { /* use defaults if unavailable */ })
+
         // Fresh login — attempt to apply a referral code from the deep link.
         // Fire-and-forget: we don't await so it never delays the app loading.
         console.log('attempting to apply referral code');
-        
+
         tryApplyReferralCode()
       } catch (err) {
         console.error('[Auth] Failed:', err)

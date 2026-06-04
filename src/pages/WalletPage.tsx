@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { wallet, kyc, withdrawals as withdrawalsApi } from '@/api/endpoints'
 import { useWalletStore } from '@/store/walletStore'
+import { useSettingsStore, bonusPayoutLabel } from '@/store/settingsStore'
 import { formatNaira, formatCoins, formatDate } from '@/lib/format'
 import { FundWalletModal } from '@/components/FundWalletModal/FundWalletModal'
 import type { TransactionRecord, KYCStatusResponse, WithdrawalRecord, WithdrawalStatus } from '@/types'
@@ -9,7 +10,11 @@ import styles from './WalletPage.module.css'
 
 export function WalletPage() {
   const navigate = useNavigate()
-  const { coinBalance, cashBalance, stakedBalance, setBalance } = useWalletStore()
+  const {
+    depositCoins, bonusCoins, earnings, earningsUsd, staked,
+    setBalance,
+  } = useWalletStore()
+  const { settings } = useSettingsStore()
   const [transactions, setTransactions] = useState<TransactionRecord[]>([])
   const [recentWithdrawals, setRecentWithdrawals] = useState<WithdrawalRecord[]>([])
   const [kycStatus, setKycStatus] = useState<KYCStatusResponse | null>(null)
@@ -26,30 +31,23 @@ export function WalletPage() {
       withdrawalsApi.list(1),
     ]).then(([balanceResult, txResult, kycResult, wdResult]) => {
       if (balanceResult.status === 'fulfilled') {
-        const b = balanceResult.value
-        setBalance(b.coin_balance, b.cash_balance, b.staked_balance)
+        setBalance(balanceResult.value)
       }
-
       if (txResult.status === 'fulfilled') {
         const data = txResult.value
-        // Handle both paginated {results:[]} and plain array
         const list = Array.isArray(data) ? data : (data?.results ?? [])
         setTransactions(list)
       }
-
       if (kycResult.status === 'fulfilled') {
         setKycStatus(kycResult.value)
       }
-
       if (wdResult.status === 'fulfilled') {
         const d = wdResult.value
         const list = Array.isArray(d) ? d : (d?.results ?? [])
         setRecentWithdrawals(list.slice(0, 5))
       }
 
-      const allFailed = [balanceResult, txResult, kycResult].every(
-        (r) => r.status === 'rejected'
-      )
+      const allFailed = [balanceResult, txResult, kycResult].every(r => r.status === 'rejected')
       if (allFailed) {
         setLoadError('Could not load wallet data. Check your connection and try again.')
       } else {
@@ -83,8 +81,10 @@ export function WalletPage() {
     )
   }
 
-  const kycApproved = kycStatus?.overall_status === 'approved'
-  const canWithdraw = (kycApproved || kycStatus?.can_withdraw === true) && parseFloat(cashBalance ?? '0') > 0
+  const kycVerified = kycStatus?.nin_verified === true || kycStatus?.overall_status === 'approved'
+  const earningsNum = parseFloat(earnings ?? '0')
+  const canWithdraw = (kycVerified || kycStatus?.can_withdraw === true) && earningsNum > 0
+  const bonusPct = bonusPayoutLabel(settings)
 
   return (
     <>
@@ -94,30 +94,43 @@ export function WalletPage() {
         {/* ── Balance Cards ── */}
         <div className={styles.cards}>
 
-          {/* Coins card */}
+          {/* Deposit Coins */}
           <div className={styles.card}>
             <div className={styles.cardLeft}>
-              <span className={styles.cardIcon}>🪙</span>
+              <span className={styles.cardIcon}>💰</span>
               <div>
-                <p className={styles.cardLabel}>Total Coins</p>
-                <p className={styles.cardValue}>{formatCoins(coinBalance)}</p>
+                <p className={styles.cardLabel}>Deposit Coins</p>
+                <p className={styles.cardValue}>{formatCoins(depositCoins)}</p>
+                <p className={styles.cardSub}>Spin to win → 100% to earnings</p>
               </div>
             </div>
-            <button
-              className={styles.cardAction}
-              onClick={() => setShowFund(true)}
-            >
-              Deposit
+            <button className={styles.cardAction} onClick={() => setShowFund(true)}>
+              + Deposit
             </button>
           </div>
 
-          {/* Earnings card */}
+          {/* Bonus Coins */}
+          <div className={`${styles.card} ${styles.cardBonus}`}>
+            <div className={styles.cardLeft}>
+              <span className={styles.cardIcon}>🎁</span>
+              <div>
+                <p className={styles.cardLabel}>Bonus Coins</p>
+                <p className={styles.cardValue}>{formatCoins(bonusCoins)}</p>
+                <p className={styles.cardSub}>Spin to win → {bonusPct} to earnings</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Earnings */}
           <div className={`${styles.card} ${styles.cardEarnings}`}>
             <div className={styles.cardLeft}>
               <span className={styles.cardIcon}>💵</span>
               <div>
-                <p className={styles.cardLabel}>Total Earnings</p>
-                <p className={styles.cardValue}>{formatNaira(cashBalance)}</p>
+                <p className={styles.cardLabel}>Earnings</p>
+                <p className={styles.cardValue}>{formatNaira(earnings)}</p>
+                {earningsUsd && parseFloat(earningsUsd) > 0 && (
+                  <p className={styles.cardSub}>≈ ${parseFloat(earningsUsd).toFixed(2)}</p>
+                )}
               </div>
             </div>
             <button
@@ -129,14 +142,14 @@ export function WalletPage() {
             </button>
           </div>
 
-          {/* Stake balance — only show when non-zero */}
-          {stakedBalance && parseFloat(stakedBalance) > 0 && (
+          {/* Staked — only when non-zero */}
+          {staked && parseFloat(staked) > 0 && (
             <div className={`${styles.card} ${styles.cardStake}`}>
               <div className={styles.cardLeft}>
                 <span className={styles.cardIcon}>🔒</span>
                 <div>
-                  <p className={styles.cardLabel}>Stake Balance</p>
-                  <p className={styles.cardValue}>{formatNaira(stakedBalance)}</p>
+                  <p className={styles.cardLabel}>Staked</p>
+                  <p className={styles.cardValue}>{formatCoins(staked)}</p>
                 </div>
               </div>
               <span className={styles.stakeBadge}>In Play</span>
@@ -145,7 +158,7 @@ export function WalletPage() {
         </div>
 
         {/* ── KYC Banner ── */}
-        {!kycApproved && (
+        {!kycVerified && (
           <div className={`${styles.kycBanner} ${kycStatus?.overall_status === 'partial' ? styles.kycPending : ''}`}>
             <div className={styles.kycBannerLeft}>
               <span className={styles.kycBannerIcon}>
@@ -153,9 +166,9 @@ export function WalletPage() {
               </span>
               <p className={styles.kycBannerText}>
                 {kycStatus?.overall_status === 'partial'
-                  ? 'Some KYC details need correction before you can withdraw.'
+                  ? 'Some identity details need correction before you can withdraw.'
                   : kycStatus?.overall_status === 'rejected'
-                    ? 'Your KYC was rejected. Contact support for help.'
+                    ? 'Your identity verification was rejected. Contact support.'
                     : 'Verify your identity to unlock cash withdrawals.'}
               </p>
             </div>
@@ -215,9 +228,7 @@ export function WalletPage() {
               {transactions.map((tx) => (
                 <div key={tx.id} className={styles.txRow}>
                   <div className={styles.txIconWrap}>
-                    <span className={styles.txIcon}>
-                      {getTxIcon(tx.type)}
-                    </span>
+                    <span className={styles.txIcon}>{getTxIcon(tx.type)}</span>
                   </div>
                   <div className={styles.txMeta}>
                     <p className={styles.txDescription}>{tx.description || formatTxType(tx.type)}</p>
@@ -226,9 +237,9 @@ export function WalletPage() {
                   <div className={styles.txAmountWrap}>
                     <p className={`${styles.txAmount} ${isCredit(tx) ? styles.txCredit : styles.txDebit}`}>
                       {isCredit(tx) ? '+' : ''}
-                      {tx.currency === 'coins'
-                        ? `🪙${formatCoins(tx.amount)}`
-                        : formatNaira(tx.amount)}
+                      {tx.balance_type === 'earnings'
+                        ? formatNaira(tx.amount)
+                        : `🪙 ${formatCoins(tx.amount)}`}
                     </p>
                     <p className={`${styles.txStatus} ${styles[`txStatus_${tx.status}`]}`}>
                       {tx.status}
@@ -241,7 +252,6 @@ export function WalletPage() {
         </div>
       </div>
 
-      {/* ── Modals ── */}
       {showFund && (
         <FundWalletModal
           onClose={() => setShowFund(false)}
@@ -257,7 +267,6 @@ export function WalletPage() {
 function isCredit(tx: TransactionRecord): boolean {
   const debitTypes = ['withdrawal', 'spin_stake']
   if (debitTypes.includes(tx.type)) return false
-  // Also treat negative amount strings as debits
   return !tx.amount.startsWith('-')
 }
 
@@ -265,6 +274,7 @@ function getTxIcon(type: string): string {
   switch (type) {
     case 'deposit':        return '⬇️'
     case 'withdrawal':     return '⬆️'
+    case 'win':
     case 'spin_win':       return '🎡'
     case 'spin_stake':     return '🔒'
     case 'referral_bonus': return '👥'
@@ -276,6 +286,7 @@ function formatTxType(type: string): string {
   switch (type) {
     case 'deposit':        return 'Cash Deposit'
     case 'withdrawal':     return 'Cash Withdrawal'
+    case 'win':
     case 'spin_win':       return 'Spin Win'
     case 'spin_stake':     return 'Spin Stake'
     case 'referral_bonus': return 'Referral Bonus'
@@ -285,12 +296,12 @@ function formatTxType(type: string): string {
 
 function getWdIcon(status: WithdrawalStatus): string {
   switch (status) {
-    case 'completed':     return '✅'
+    case 'completed':  return '✅'
     case 'failed':
-    case 'rejected':      return '❌'
-    case 'cancelled':     return '↩️'
-    case 'processing':    return '🏦'
-    default:              return '⏳'
+    case 'rejected':   return '❌'
+    case 'cancelled':  return '↩️'
+    case 'processing': return '🏦'
+    default:           return '⏳'
   }
 }
 

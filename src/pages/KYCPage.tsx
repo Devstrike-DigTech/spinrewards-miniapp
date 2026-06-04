@@ -4,7 +4,6 @@ import { kyc as kycApi } from '@/api/endpoints'
 import { useTelegram } from '@/hooks/useTelegram'
 import type {
   KYCStatusResponse,
-  KYCBank,
   KYCDocumentUploadResponse,
   KYCSectionStatus,
   KYCSubmitPayload,
@@ -31,11 +30,7 @@ function SectionBadge({ number, status }: { number: number; status: KYCSectionSt
     )
   }
   if (status === 'requires_correction') {
-    return (
-      <div className={`${styles.sectionBadge} ${styles.sectionBadgeError}`}>
-        !
-      </div>
-    )
+    return <div className={`${styles.sectionBadge} ${styles.sectionBadgeError}`}>!</div>
   }
   if (status === 'rejected') {
     return (
@@ -66,9 +61,9 @@ function Section({
 }) {
   const sectionClass = [
     styles.section,
-    status === 'verified'             ? styles.sectionVerified  : '',
-    status === 'requires_correction'  ? styles.sectionError     : '',
-    status === 'rejected'             ? styles.sectionRejected  : '',
+    status === 'verified'            ? styles.sectionVerified : '',
+    status === 'requires_correction' ? styles.sectionError    : '',
+    status === 'rejected'            ? styles.sectionRejected : '',
   ].join(' ')
 
   return (
@@ -78,7 +73,6 @@ function Section({
         <span className={styles.sectionTitle}>{title}</span>
       </div>
 
-      {/* Error/correction reason */}
       {(status === 'requires_correction' || status === 'rejected') && reason && (
         <div className={`${styles.sectionReason} ${status === 'rejected' ? styles.sectionRejectedReason : ''}`}>
           <span>⚠</span>
@@ -86,7 +80,6 @@ function Section({
         </div>
       )}
 
-      {/* Verified: show confirmation row, hide form fields */}
       {status === 'verified' ? (
         <div className={styles.sectionVerifiedContent}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -101,7 +94,7 @@ function Section({
   )
 }
 
-// ── Sensitive input with show/hide toggle ──────────────────────────────────────
+// ── Sensitive input with show/hide ─────────────────────────────────────────────
 
 function SensitiveInput({
   value,
@@ -142,6 +135,28 @@ function SensitiveInput({
   )
 }
 
+// ── Locked "NIN Verified" card ─────────────────────────────────────────────────
+
+function NINVerifiedCard({ fullName }: { fullName: string }) {
+  return (
+    <div className={styles.ninVerifiedCard}>
+      <div className={styles.ninVerifiedIcon}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3de88a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          <polyline points="9 12 11 14 15 10" />
+        </svg>
+      </div>
+      <div className={styles.ninVerifiedContent}>
+        <p className={styles.ninVerifiedTitle}>Identity Verified ✓</p>
+        {fullName && (
+          <p className={styles.ninVerifiedName}>{fullName}</p>
+        )}
+        <p className={styles.ninVerifiedSub}>✓ You can now withdraw your earnings</p>
+      </div>
+    </div>
+  )
+}
+
 // ── Success screen ─────────────────────────────────────────────────────────────
 
 function SuccessScreen({ onOkay }: { onOkay: () => void }) {
@@ -149,10 +164,8 @@ function SuccessScreen({ onOkay }: { onOkay: () => void }) {
     <div className={styles.successScreen}>
       <div className={styles.successIcon}>
         <svg width="100" height="100" viewBox="0 0 100 100" fill="none">
-          {/* Person body */}
           <circle cx="42" cy="32" r="14" stroke="#6c7cbf" strokeWidth="3.5" fill="none" />
           <path d="M14 80 Q14 58 42 58 Q64 58 70 68" stroke="#6c7cbf" strokeWidth="3.5" strokeLinecap="round" fill="none" />
-          {/* Verified badge (bottom-right) */}
           <circle cx="72" cy="72" r="20" fill="#0f1527" />
           <circle cx="72" cy="72" r="18" stroke="#3de88a" strokeWidth="2.5" fill="rgba(61,232,138,0.08)" />
           <polyline points="63 72 70 79 82 65" stroke="#3de88a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
@@ -171,50 +184,37 @@ export function KYCPage() {
   const navigate = useNavigate()
   const { haptic } = useTelegram()
 
-  // Remote state
-  const [kycStatus, setKycStatus]   = useState<KYCStatusResponse | null>(null)
-  const [banks, setBanks]           = useState<KYCBank[]>([])
-  const [loadError, setLoadError]   = useState('')
+  const [kycStatus, setKycStatus]     = useState<KYCStatusResponse | null>(null)
+  const [loadError, setLoadError]     = useState('')
   const [loadingInit, setLoadingInit] = useState(true)
-
-  // Post-submit success flash (before navigating away)
   const [showSuccess, setShowSuccess] = useState(false)
 
-  // Form fields
-  const [fullName, setFullName]     = useState('')
-  const [nin, setNin]               = useState('')
-  const [bvn, setBvn]               = useState('')
-  const [dob, setDob]               = useState('')
-  const [phone, setPhone]           = useState('')
-  const [bankCode, setBankCode]     = useState('')
-  const [accountNo, setAccountNo]   = useState('')
-  const [docType, setDocType]       = useState<'utility_bill' | 'bank_statement'>('utility_bill')
+  // Form fields — NIN-only (BVN and bank account removed)
+  const [fullName, setFullName] = useState('')
+  const [nin, setNin]           = useState('')
+  const [dob, setDob]           = useState('')
+  const [phone, setPhone]       = useState('')
 
-  // Document upload state
-  const [uploadedDoc, setUploadedDoc]         = useState<KYCDocumentUploadResponse | null>(null)
-  const [uploading, setUploading]             = useState(false)
-  const [uploadError, setUploadError]         = useState('')
+  // Document upload
+  const [docType, setDocType]             = useState<'utility_bill' | 'bank_statement'>('utility_bill')
+  const [uploadedDoc, setUploadedDoc]     = useState<KYCDocumentUploadResponse | null>(null)
+  const [uploading, setUploading]         = useState(false)
+  const [uploadError, setUploadError]     = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Bank account resolution
-  const [resolvedName, setResolvedName]       = useState('')
-  const [resolvingBank, setResolvingBank]     = useState(false)
-  const [resolveError, setResolveError]       = useState('')
-
-  // Submit state
-  const [submitting, setSubmitting]           = useState(false)
-  const [submitError, setSubmitError]         = useState('')
+  // Submit
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   // ── Initial load ──────────────────────────────────────────────────────────
   const loadInit = useCallback(async () => {
     setLoadingInit(true)
     setLoadError('')
     try {
-      const [statusRes, banksRes] = await Promise.all([kycApi.status(), kycApi.banks()])
+      const statusRes = await kycApi.status()
       setKycStatus(statusRes)
-      setBanks(banksRes)
     } catch {
-      setLoadError('Failed to load KYC data. Check your connection and try again.')
+      setLoadError('Failed to load KYC status. Check your connection and try again.')
     } finally {
       setLoadingInit(false)
     }
@@ -222,43 +222,11 @@ export function KYCPage() {
 
   useEffect(() => { loadInit() }, [loadInit])
 
-  // ── Live bank account resolution ──────────────────────────────────────────
-  useEffect(() => {
-    if (!bankCode || accountNo.length !== 10) {
-      setResolvedName('')
-      setResolveError('')
-      return
-    }
-
-    let cancelled = false
-    const timer = setTimeout(async () => {
-      setResolvingBank(true)
-      setResolveError('')
-      try {
-        const name = await kycApi.resolveBank(bankCode, accountNo)
-        if (!cancelled) setResolvedName(name)
-      } catch (err: any) {
-        if (!cancelled) {
-          setResolvedName('')
-          setResolveError(err?.response?.data?.message ?? 'Account not found — check the number.')
-        }
-      } finally {
-        if (!cancelled) setResolvingBank(false)
-      }
-    }, 400)
-
-    return () => {
-      cancelled = true
-      clearTimeout(timer)
-    }
-  }, [bankCode, accountNo])
-
   // ── Document upload ───────────────────────────────────────────────────────
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Client-side validations
     const ALLOWED = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
     if (!ALLOWED.includes(file.type)) {
       setUploadError('Only PDF, JPG, or PNG files are allowed.')
@@ -281,63 +249,47 @@ export function KYCPage() {
       setUploadError(err?.response?.data?.message ?? 'Upload failed. Please try again.')
     } finally {
       setUploading(false)
-      // Reset so re-picking same file triggers onChange
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
-  // ── Derive section statuses (needed here for isReady / submit) ───────────
-  const ps = kycStatus?.personal_info_status  ?? 'pending'
-  const bs = kycStatus?.bank_account_status   ?? 'pending'
-  const ds = kycStatus?.document_status       ?? 'pending'
+  // ── Section statuses ──────────────────────────────────────────────────────
+  const ps = kycStatus?.personal_info_status ?? 'pending'
+  const ds = kycStatus?.document_status      ?? 'pending'
 
-  // ── Form readiness — only require fields for non-verified sections ────────
+  // ── Form readiness ────────────────────────────────────────────────────────
   const personalInfoReady = ps === 'verified' || (
     fullName.trim().length >= 2 &&
     nin.length === 11 &&
-    bvn.length === 11 &&
     dob !== ''
   )
-  const bankReady = bs === 'verified' || (
-    bankCode !== '' &&
-    accountNo.length === 10 &&
-    resolvedName !== '' &&
-    !resolvingBank
-  )
-  const docReady = ds === 'verified' || uploadedDoc !== null
+  // Document section is optional — NIN submission alone is sufficient
+  const isReady = personalInfoReady
 
-  const isReady = personalInfoReady && bankReady && docReady
-
-  // ── Submit — only include payload fields for non-verified sections ─────────
+  // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubmit() {
     if (!isReady || submitting) return
     setSubmitting(true)
     setSubmitError('')
 
-    // Build payload selectively — don't re-submit already-verified sections
-    const payload: Partial<KYCSubmitPayload> = {}
+    const payload: KYCSubmitPayload = {} as KYCSubmitPayload
 
     if (ps !== 'verified') {
       payload.full_name = fullName.trim()
       payload.nin = nin
-      payload.bvn = bvn
       payload.date_of_birth = dob
       if (phone.trim()) payload.phone_number = phone.trim()
-    }
-    if (bs !== 'verified') {
-      payload.bank_code = bankCode
-      payload.account_number = accountNo
     }
     if (ds !== 'verified' && uploadedDoc) {
       payload.document_id = uploadedDoc.id
     }
 
     try {
-      const newStatus = await kycApi.submit(payload as KYCSubmitPayload)
+      const newStatus = await kycApi.submit(payload)
       setKycStatus(newStatus)
       haptic.notificationOccurred('success')
 
-      if (newStatus.overall_status === 'approved') {
+      if (newStatus.nin_verified || newStatus.overall_status === 'approved') {
         setShowSuccess(true)
       }
     } catch (err: any) {
@@ -367,25 +319,52 @@ export function KYCPage() {
     )
   }
 
-  // ── Render: success flash after first approval ────────────────────────────
+  // ── Render: success flash ─────────────────────────────────────────────────
   if (showSuccess) {
     return <SuccessScreen onOkay={() => navigate('/profile')} />
   }
 
-  // ── Render: already approved ──────────────────────────────────────────────
-  if (kycStatus?.overall_status === 'approved') {
+  // ── Render: NIN already verified — locked read-only view ──────────────────
+  if (kycStatus?.nin_verified) {
     return (
       <div className={styles.page}>
         <div className={styles.pageHeader}>
           <h1 className={styles.pageTitle}>KYC Verification</h1>
         </div>
-        <div className={styles.verifiedCard}>
-          <div className={styles.verifiedCardIcon}>✅</div>
-          <div>
-            <p className={styles.verifiedCardTitle}>Identity Verified</p>
-            <p className={styles.verifiedCardSub}>Your account is fully verified. Withdrawals are enabled.</p>
-          </div>
-        </div>
+        <NINVerifiedCard fullName={kycStatus.nin_full_name ?? ''} />
+
+        {/* Document section still available even after NIN verification */}
+        {ds !== 'verified' && (
+          <Section
+            number={2}
+            title="Upload Document"
+            status={ds}
+            reason={kycStatus?.document_reason ?? ''}
+          >
+            <p className={styles.uploadHint}>
+              Upload a recent utility bill or bank statement (PDF, JPG, or PNG · max 5 MB)
+            </p>
+            <div className={styles.docTypeRow}>
+              <button type="button" className={`${styles.docTypeBtn} ${docType === 'utility_bill' ? styles.docTypeBtnActive : ''}`} onClick={() => setDocType('utility_bill')}>
+                Utility Bill
+              </button>
+              <button type="button" className={`${styles.docTypeBtn} ${docType === 'bank_statement' ? styles.docTypeBtnActive : ''}`} onClick={() => setDocType('bank_statement')}>
+                Bank Statement
+              </button>
+            </div>
+            <div className={`${styles.uploadArea} ${uploadedDoc ? styles.uploadAreaDone : ''} ${uploadError ? styles.uploadAreaError : ''}`}>
+              <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className={styles.uploadInput} onChange={handleFileChange} disabled={uploading} />
+              {uploading ? (
+                <><div className={styles.resolveSpinner} /><span>Uploading…</span></>
+              ) : uploadedDoc ? (
+                <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg><span>{uploadedDoc.original_filename}</span></>
+              ) : (
+                <><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg><span>Select file</span></>
+              )}
+            </div>
+            {uploadError && <p className={styles.uploadErrorMsg}>⚠ {uploadError}</p>}
+          </Section>
+        )}
       </div>
     )
   }
@@ -394,20 +373,18 @@ export function KYCPage() {
   return (
     <div className={styles.page}>
 
-      {/* Header */}
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>KYC Verification</h1>
         <p className={styles.pageSubtitle}>Verify your identity to enable cash withdrawals</p>
       </div>
 
-      {/* ── Section 1: Personal Information ── */}
+      {/* ── Section 1: Personal Information (NIN only) ── */}
       <Section
         number={1}
         title="Personal Information"
         status={ps}
         reason={kycStatus?.personal_info_reason ?? ''}
       >
-        {/* Full Name */}
         <div className={styles.formGroup}>
           <label className={styles.label}>Full Name</label>
           <input
@@ -415,12 +392,11 @@ export function KYCPage() {
             type="text"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            placeholder="Must match account name"
+            placeholder="As it appears on your NIN"
             autoComplete="off"
           />
         </div>
 
-        {/* NIN */}
         <div className={styles.formGroup}>
           <label className={styles.label}>NIN</label>
           <SensitiveInput
@@ -431,18 +407,6 @@ export function KYCPage() {
           />
         </div>
 
-        {/* BVN */}
-        <div className={styles.formGroup}>
-          <label className={styles.label}>BVN</label>
-          <SensitiveInput
-            value={bvn}
-            onChange={setBvn}
-            maxLength={11}
-            placeholder="Enter your 11-digit BVN"
-          />
-        </div>
-
-        {/* Date of Birth */}
         <div className={styles.formGroup}>
           <label className={styles.label}>Date of Birth</label>
           <input
@@ -454,167 +418,66 @@ export function KYCPage() {
           />
         </div>
 
-        {/* Phone Number */}
         <div className={styles.formGroup}>
-          <label className={styles.label}>Phone Number <span style={{ color: '#60607a', fontWeight: 400 }}>(optional)</span></label>
+          <label className={styles.label}>
+            Phone Number{' '}
+            <span style={{ color: '#60607a', fontWeight: 400 }}>(optional)</span>
+          </label>
           <input
             className={styles.input}
             type="tel"
             inputMode="tel"
-            maxLength={11}
+            maxLength={14}
             value={phone}
-            onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-            placeholder="Enter your 11-digit number"
+            onChange={(e) => setPhone(e.target.value.replace(/[^\d+]/g, ''))}
+            placeholder="+234XXXXXXXXXX"
           />
         </div>
       </Section>
 
-      {/* ── Section 2: Account Details ── */}
+      {/* ── Section 2: Document Upload (optional) ── */}
       <Section
         number={2}
-        title="Account Details"
-        status={bs}
-        reason={kycStatus?.bank_account_reason ?? ''}
-      >
-        {/* Bank */}
-        <div className={styles.formGroup}>
-          <label className={styles.label}>Bank Name</label>
-          <select
-            className={styles.select}
-            value={bankCode}
-            onChange={(e) => {
-              setBankCode(e.target.value)
-              setResolvedName('')
-              setResolveError('')
-            }}
-          >
-            <option value="">Select Bank</option>
-            {banks.map((b) => (
-              <option key={b.code} value={b.code}>{b.name}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Account Number */}
-        <div className={styles.formGroup}>
-          <label className={styles.label}>Account Number</label>
-          <input
-            className={styles.input}
-            type="text"
-            inputMode="numeric"
-            maxLength={10}
-            value={accountNo}
-            onChange={(e) => {
-              setAccountNo(e.target.value.replace(/\D/g, ''))
-              setResolvedName('')
-              setResolveError('')
-            }}
-            placeholder="Enter your 10-digit number"
-          />
-          {resolveError && (
-            <p style={{ fontSize: 12, color: '#e83d3d', marginTop: 4 }}>• {resolveError}</p>
-          )}
-        </div>
-
-        {/* Account Name — read-only, resolved */}
-        <div className={styles.formGroup}>
-          <label className={styles.label}>Account Name</label>
-          <div className={`${styles.resolvedName} ${resolvedName ? styles.resolvedNameFilled : ''} ${resolveError ? styles.resolvedNameError : ''}`}>
-            {resolvingBank && <div className={styles.resolveSpinner} />}
-            {resolvingBank
-              ? 'Looking up…'
-              : resolvedName
-                ? resolvedName
-                : resolveError
-                  ? 'Account not found'
-                  : 'Must match legal name'}
-          </div>
-          {resolvedName && (
-            <p className={styles.inputHint}>✓ Please confirm this is your name</p>
-          )}
-        </div>
-      </Section>
-
-      {/* ── Section 3: Upload Document ── */}
-      <Section
-        number={3}
         title="Upload Document"
         status={ds}
         reason={kycStatus?.document_reason ?? ''}
       >
         <p className={styles.uploadHint}>
-          Upload a recent utility bill or bank statement (PDF, JPG, or PNG · max 5 MB)
+          Optional — upload a utility bill or bank statement for faster verification (PDF, JPG, or PNG · max 5 MB)
         </p>
 
-        {/* Document type toggle */}
         <div className={styles.docTypeRow}>
-          <button
-            type="button"
-            className={`${styles.docTypeBtn} ${docType === 'utility_bill' ? styles.docTypeBtnActive : ''}`}
-            onClick={() => setDocType('utility_bill')}
-          >
+          <button type="button" className={`${styles.docTypeBtn} ${docType === 'utility_bill' ? styles.docTypeBtnActive : ''}`} onClick={() => setDocType('utility_bill')}>
             Utility Bill
           </button>
-          <button
-            type="button"
-            className={`${styles.docTypeBtn} ${docType === 'bank_statement' ? styles.docTypeBtnActive : ''}`}
-            onClick={() => setDocType('bank_statement')}
-          >
+          <button type="button" className={`${styles.docTypeBtn} ${docType === 'bank_statement' ? styles.docTypeBtnActive : ''}`} onClick={() => setDocType('bank_statement')}>
             Bank Statement
           </button>
         </div>
 
-        {/* File picker */}
         <div className={`${styles.uploadArea} ${uploadedDoc ? styles.uploadAreaDone : ''} ${uploadError ? styles.uploadAreaError : ''}`}>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            className={styles.uploadInput}
-            onChange={handleFileChange}
-            disabled={uploading}
-          />
+          <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className={styles.uploadInput} onChange={handleFileChange} disabled={uploading} />
           {uploading ? (
-            <>
-              <div className={styles.resolveSpinner} />
-              <span>Uploading…</span>
-            </>
+            <><div className={styles.resolveSpinner} /><span>Uploading…</span></>
           ) : uploadedDoc ? (
-            <>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              <span className={styles.uploadFilename}>{uploadedDoc.original_filename}</span>
-            </>
+            <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg><span className={styles.uploadFilename}>{uploadedDoc.original_filename}</span></>
           ) : (
-            <>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              <span>Select file</span>
-            </>
+            <><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg><span>Select file (optional)</span></>
           )}
         </div>
 
-        {/* Upload details */}
         {uploadedDoc && (
           <p className={styles.uploadFilename}>
             ✓ {uploadedDoc.original_filename} · {fmtBytes(uploadedDoc.file_size_bytes)}
           </p>
         )}
-        {uploadError && (
-          <p className={styles.uploadErrorMsg}>⚠ {uploadError}</p>
-        )}
+        {uploadError && <p className={styles.uploadErrorMsg}>⚠ {uploadError}</p>}
       </Section>
 
-      {/* Submit error */}
       {submitError && (
         <p style={{ fontSize: 13, color: '#e83d3d', textAlign: 'center' }}>⚠ {submitError}</p>
       )}
 
-      {/* Submit button */}
       <button
         className={styles.submitBtn}
         onClick={handleSubmit}

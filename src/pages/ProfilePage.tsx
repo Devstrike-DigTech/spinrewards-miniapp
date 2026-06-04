@@ -38,7 +38,7 @@ function KYCStatus({
 }) {
   if (!status) return null
 
-  if (status.overall_status === 'approved') {
+  if (status.nin_verified || status.overall_status === 'approved') {
     return (
       <div className={profileStyles.kycVerified}>
         <div className={profileStyles.kycVerifiedDot}>✓</div>
@@ -70,7 +70,7 @@ function KYCStatus({
 
 function KYCActionCard({ status }: { status: KYCStatusResponse | null }) {
   const navigate = useNavigate()
-  if (!status || status.overall_status === 'approved') return null
+  if (!status || status.nin_verified || status.overall_status === 'approved') return null
 
   if (status.overall_status === 'partial') {
     return (
@@ -194,7 +194,7 @@ export function ProfilePage() {
   }
 
   // Referral code — prefer from referralData, fall back to user
-  const referralCode = referralData?.code ?? user?.referral_code ?? null
+  const referralCode = referralData?.referral_code ?? user?.referral_code ?? null
 
   return (
     <div className={styles.page}>
@@ -213,25 +213,25 @@ export function ProfilePage() {
         <div className={profileStyles.statsRow}>
           <div className={profileStyles.statBox}>
             <span className={profileStyles.statValue}>
-              {formatAmount(balance?.cash_balance)}
+              {formatAmount(balance?.earnings)}
             </span>
-            <span className={profileStyles.statLabel}>Cash</span>
+            <span className={profileStyles.statLabel}>Earnings</span>
           </div>
           <div className={profileStyles.statBox}>
             <span className={profileStyles.statValue}>
-              {formatCoins(balance?.coin_balance)}
+              {formatCoins(balance?.deposit_coins)}
             </span>
             <span className={profileStyles.statLabel}>Coins</span>
           </div>
           <div className={profileStyles.statBox}>
             <span className={profileStyles.statValue}>
-              {formatAmount(balance?.staked_balance)}
+              {formatCoins(balance?.bonus_coins)}
             </span>
-            <span className={profileStyles.statLabel}>Staked</span>
+            <span className={profileStyles.statLabel}>Bonus</span>
           </div>
           <div className={profileStyles.statBox}>
             <span className={profileStyles.statValue}>
-              {referralData?.stats.total_referrals ?? 0}
+              {referralData?.total_referred ?? 0}
             </span>
             <span className={profileStyles.statLabel}>Referrals</span>
           </div>

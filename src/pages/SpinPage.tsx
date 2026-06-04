@@ -109,7 +109,8 @@ export function SpinPage() {
   const engineRef = useRef<SpinEngine | null>(null)
   const navigate = useNavigate()
   const { haptic } = useTelegram()
-  const { coinBalance, setBalance } = useWalletStore()
+  const { depositCoins, bonusCoins, setBalance } = useWalletStore()
+  const [sourceWallet, setSourceWallet] = useState<'deposit_coins' | 'bonus_coins'>('deposit_coins')
   const toast = useMiniToast()
 
   // All active wheels — used to derive stake presets
@@ -178,8 +179,7 @@ export function SpinPage() {
         setWelcomeWheel(list.find((w) => w.is_welcome_only) ?? null)
       }
       if (balR.status === 'fulfilled') {
-        const b = balR.value
-        setBalance(b.coin_balance, b.cash_balance, b.staked_balance)
+        setBalance(balR.value)
       }
       if (rewardR.status === 'fulfilled') setDailyReward(rewardR.value)
       if (histR.status === 'fulfilled') {
@@ -263,7 +263,7 @@ export function SpinPage() {
       await rewardsApi.claim()
       const [updated, bal] = await Promise.all([rewardsApi.status(), wallet.balance()])
       setDailyReward(updated)
-      setBalance(bal.coin_balance, bal.cash_balance, bal.staked_balance)
+      setBalance(bal)
       haptic.notificationOccurred('success')
     } catch {
       haptic.notificationOccurred('error')
@@ -278,7 +278,10 @@ export function SpinPage() {
     setClaimingChallenge(true)
     try {
       const res = await challengesApi.claim(loginChallenge.id)
-      toast.show(res.message ?? 'Reward claimed!', 'success')
+      const claimMsg = res.credited_to_label
+        ? `You earned ${res.amount} ${res.credited_to_label}!`
+        : res.message ?? 'Reward claimed!'
+      toast.show(claimMsg, 'success')
       haptic.notificationOccurred('success')
       // Refetch wallet balance + updated challenge state
       const [updated, bal] = await Promise.allSettled([
@@ -293,8 +296,7 @@ export function SpinPage() {
         setLoginChallenge(refreshed)
       }
       if (bal.status === 'fulfilled') {
-        const b = bal.value
-        setBalance(b.coin_balance, b.cash_balance, b.staked_balance)
+        setBalance(bal.value)
       }
     } catch (err: any) {
       const msg =
@@ -344,6 +346,7 @@ export function SpinPage() {
       const result = await spinApi.execute({
         wheel_id: resolvedWheel.id,
         stake_amount: num.toFixed(2),
+        source_wallet: sourceWallet,
       })
       setSpinResult(result)
       setPhase('spinning')
@@ -356,7 +359,7 @@ export function SpinPage() {
       setPhase('error')
       haptic.notificationOccurred('error')
     }
-  }, [phase, resolvedWheel, stake, haptic])
+  }, [phase, resolvedWheel, stake, sourceWallet, haptic])
 
   // Called by SpinEngine when animation starts
   const handleSpinStart = useCallback(() => {
@@ -390,7 +393,7 @@ export function SpinPage() {
     }, 150)
 
     wallet.balance()
-      .then((b) => setBalance(b.coin_balance, b.cash_balance, b.staked_balance))
+      .then((b) => setBalance(b))
       .catch(() => {})
   }, [spinResult, haptic, setBalance])
 
@@ -402,9 +405,7 @@ export function SpinPage() {
 
   const handleFundSuccess = useCallback(() => {
     setShowFund(false)
-    wallet.balance()
-      .then((b) => setBalance(b.coin_balance, b.cash_balance, b.staked_balance))
-      .catch(() => {})
+    wallet.balance().then((b) => setBalance(b)).catch(() => {})
   }, [setBalance])
 
   const toggleMute = useCallback(() => {
@@ -459,11 +460,16 @@ export function SpinPage() {
   }
 
   // ── Derived ───────────────────────────────────────────────────────────────
+  // Check the selected wallet has enough balance for the stake
+  const selectedBalance = parseFloat(
+    (sourceWallet === 'deposit_coins' ? depositCoins : bonusCoins) ?? '0'
+  )
   const canSpin =
     phase === 'idle' &&
     lookupState === 'found' &&
     !!resolvedWheel &&
-    parseFloat(stake) > 0
+    parseFloat(stake) > 0 &&
+    selectedBalance >= parseFloat(stake)
 
   // ══════════════════════════════════════════════════════════════════════════
   // RESULT FULL-SCREEN OVERLAY
@@ -579,7 +585,9 @@ export function SpinPage() {
           <div className={styles.topBar}>
             <div className={styles.coinPill}>
               <span>🪙</span>
-              <span className={styles.coinPillValue}>{formatCoins(coinBalance)}</span>
+              <span className={styles.coinPillValue}>{formatCoins(
+                String(parseFloat(depositCoins ?? '0') + parseFloat(bonusCoins ?? '0'))
+              )}</span>
             </div>
             <div className={styles.topRight}>
               <button className={styles.iconBtn} onClick={toggleMute}>{muted ? '🔇' : '🔊'}</button>
@@ -658,6 +666,40 @@ export function SpinPage() {
                 <span className={styles.wheelBadgeError}>⚠ {lookupError}</span>
               )}
             </div>
+
+            {/* ── Source wallet picker ── */}
+            {phase === 'idle' && (
+              <div className={styles.walletPicker}>
+                <button
+                  className={`${styles.walletPickerOption} ${sourceWallet === 'deposit_coins' ? styles.walletPickerSelected : ''}`}
+                  onClick={() => setSourceWallet('deposit_coins')}
+                  disabled={parseFloat(depositCoins ?? '0') <= 0}
+                >
+                  <span className={styles.walletPickerRadio} />
+                  <span className={styles.walletPickerIcon}>💰</span>
+                  <span className={styles.walletPickerLabel}>
+                    Deposit{' '}
+                    <span className={styles.walletPickerBal}>
+                      {formatCoins(depositCoins)}
+                    </span>
+                  </span>
+                </button>
+                <button
+                  className={`${styles.walletPickerOption} ${sourceWallet === 'bonus_coins' ? styles.walletPickerSelected : ''}`}
+                  onClick={() => setSourceWallet('bonus_coins')}
+                  disabled={parseFloat(bonusCoins ?? '0') <= 0}
+                >
+                  <span className={styles.walletPickerRadio} />
+                  <span className={styles.walletPickerIcon}>🎁</span>
+                  <span className={styles.walletPickerLabel}>
+                    Bonus{' '}
+                    <span className={styles.walletPickerBal}>
+                      {formatCoins(bonusCoins)}
+                    </span>
+                  </span>
+                </button>
+              </div>
+            )}
 
             {/* ── Stake section ── */}
             {phase !== 'error' && (
