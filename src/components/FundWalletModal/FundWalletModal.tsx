@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { deposits } from '@/api/endpoints'
 import { pollDeposit } from '@/lib/pollDeposit'
-import type { DepositRecord } from '@/types'
+import { useSettingsStore, coinsForNgn, coinsForUsd } from '@/store/settingsStore'
+import type { DepositRecord, CryptoCurrency } from '@/types'
 import styles from './FundWalletModal.module.css'
 
 interface Props {
@@ -19,16 +20,47 @@ type Stage =
   | 'error'
 
 export function FundWalletModal({ onClose, onSuccess }: Props) {
+  const settings = useSettingsStore((s) => s.settings)
   const [provider, setProvider] = useState<Provider>('paystack')
   const [amount, setAmount] = useState('')
   const [stage, setStage] = useState<Stage>('form')
   const [deposit, setDeposit] = useState<DepositRecord | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
 
+  // Crypto coin picker (NowPayments)
+  const [cryptoCurrencies, setCryptoCurrencies] = useState<CryptoCurrency[]>([])
+  const [payCurrency, setPayCurrency] = useState('usdt')
+
+  // Lazily load the crypto coin list when the user switches to the crypto tab
+  useEffect(() => {
+    if (provider !== 'nowpayments' || cryptoCurrencies.length > 0) return
+    deposits.cryptoCurrencies()
+      .then((r) => {
+        if (r.currencies?.length) {
+          setCryptoCurrencies(r.currencies)
+          const stable = r.currencies.find((c) => c.is_stable)
+          setPayCurrency((stable ?? r.currencies[0]).code)
+        }
+      })
+      .catch(() => {/* fall back to usdt default */})
+  }, [provider, cryptoCurrencies.length])
+
+  // Dynamic minimums from public settings (admin-configurable)
+  const minNgn = parseFloat(settings?.min_deposit_ngn ?? '1000')
+  const minUsd = parseFloat(settings?.min_deposit_usd ?? '20')
+  const isCrypto = provider === 'nowpayments'
+  const minAmount = isCrypto ? minUsd : minNgn
+  const amountNum = parseFloat(amount) || 0
+  const coinPreview = isCrypto
+    ? coinsForUsd(amountNum, settings)
+    : coinsForNgn(amountNum, settings)
+
   const handleSubmit = useCallback(async () => {
     const num = parseFloat(amount)
-    if (!amount || isNaN(num) || num < 100) {
-      setErrorMsg('Minimum deposit is ₦100')
+    if (!amount || isNaN(num) || num < minAmount) {
+      setErrorMsg(
+        isCrypto ? `Minimum deposit is $${minUsd}` : `Minimum deposit is ₦${minNgn.toLocaleString()}`
+      )
       return
     }
 
@@ -39,6 +71,7 @@ export function FundWalletModal({ onClose, onSuccess }: Props) {
       const record = await deposits.initiate({
         amount: num,
         provider,
+        ...(isCrypto ? { pay_currency: payCurrency } : {}),
       })
       setDeposit(record)
 
@@ -69,7 +102,7 @@ export function FundWalletModal({ onClose, onSuccess }: Props) {
       )
       setStage('form')
     }
-  }, [amount, provider, onSuccess])
+  }, [amount, provider, payCurrency, isCrypto, minAmount, minNgn, minUsd, onSuccess])
 
   const handleCheckPaystack = useCallback(async () => {
     if (!deposit) return
@@ -165,15 +198,37 @@ export function FundWalletModal({ onClose, onSuccess }: Props) {
               </label>
             </div>
 
+            {/* Crypto coin picker */}
+            {isCrypto && cryptoCurrencies.length > 0 && (
+              <select
+                className={styles.input}
+                value={payCurrency}
+                onChange={(e) => setPayCurrency(e.target.value)}
+              >
+                {cryptoCurrencies.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name} ({c.code.toUpperCase()})
+                  </option>
+                ))}
+              </select>
+            )}
+
             <input
               className={styles.input}
               type="number"
               inputMode="numeric"
-              placeholder="Enter Amount"
+              placeholder={isCrypto ? 'Enter USD Amount' : 'Enter Amount (₦)'}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              min={100}
+              min={minAmount}
             />
+
+            <p className={styles.previewHint}>
+              Min {isCrypto ? `$${minUsd}` : `₦${minNgn.toLocaleString()}`}
+              {amountNum >= minAmount && (
+                <> · You'll get <strong>🪙 {coinPreview.toLocaleString()}</strong> coins</>
+              )}
+            </p>
 
             {errorMsg && <p className={styles.error}>{errorMsg}</p>}
 
