@@ -5,13 +5,13 @@ import { SpinEngine, DEFAULT_SEGMENTS } from '@/components/SpinWheel/spinEngine'
 import { Confetti } from '@/components/Confetti/Confetti'
 import { FundWalletModal } from '@/components/FundWalletModal/FundWalletModal'
 import { useMiniToast } from '@/components/MiniToast/MiniToast'
-import { spin as spinApi, wallet, rewards as rewardsApi, kyc as kycApi, challenges as challengesApi } from '@/api/endpoints'
+import { spin as spinApi, wallet, kyc as kycApi, challenges as challengesApi } from '@/api/endpoints'
 import { useWalletStore } from '@/store/walletStore'
 import { useTelegram } from '@/hooks/useTelegram'
 import { sounds } from '@/lib/sounds'
 import { getWheelVisualConfig, deriveStakePresets, segmentsFromApi } from '@/lib/wheelConfig'
 import { formatNaira, formatCoins } from '@/lib/format'
-import type { WheelRecord, SpinResult, DailyRewardStatus, KYCOverallStatus, Challenge } from '@/types'
+import type { WheelRecord, SpinResult, KYCOverallStatus, Challenge } from '@/types'
 import styles from './SpinPage.module.css'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -22,8 +22,6 @@ function wheelEmoji(type: string) {
     '🎰'
   )
 }
-
-const DAY_MULTIPLIERS = [100, 200, 300, 400, 500, 600, 1000]
 
 /** Simple debounce hook */
 function useDebounce<T>(value: T, delay: number): T {
@@ -134,10 +132,6 @@ export function SpinPage() {
   // Welcome wheel (separate flow)
   const [welcomeWheel, setWelcomeWheel] = useState<WheelRecord | null>(null)
 
-  // Daily reward
-  const [dailyReward, setDailyReward] = useState<DailyRewardStatus | null>(null)
-  const [claimingReward, setClaimingReward] = useState(false)
-
   // Login / daily streak challenge (shown below the wheel)
   const [loginChallenge, setLoginChallenge] = useState<Challenge | null>(null)
   const [claimingChallenge, setClaimingChallenge] = useState(false)
@@ -168,11 +162,10 @@ export function SpinPage() {
     Promise.allSettled([
       spinApi.activeWheels(),
       wallet.balance(),
-      rewardsApi.status(),
       spinApi.history(1),
       kycApi.status(),
       challengesApi.list(),
-    ]).then(([wheelsR, balR, rewardR, histR, kycR, challengesR]) => {
+    ]).then(([wheelsR, balR, histR, kycR, challengesR]) => {
       if (wheelsR.status === 'fulfilled') {
         const list = wheelsR.value
         setActiveWheels(list)
@@ -181,7 +174,6 @@ export function SpinPage() {
       if (balR.status === 'fulfilled') {
         setBalance(balR.value)
       }
-      if (rewardR.status === 'fulfilled') setDailyReward(rewardR.value)
       if (histR.status === 'fulfilled') {
         const d = histR.value
         setRecentSpins(Array.isArray(d) ? d.slice(0, 5) : (d?.results ?? []).slice(0, 5))
@@ -254,23 +246,6 @@ export function SpinPage() {
   // Re-key the SpinWheel by wheel ID so Pixi re-initialises whenever the
   // wheel (and therefore its segments) change — even across the same type.
   const wheelKey = resolvedWheel?.id ?? 'default'
-
-  // ── Daily reward ──────────────────────────────────────────────────────────
-  const claimDailyReward = useCallback(async () => {
-    if (!dailyReward?.can_claim || claimingReward) return
-    setClaimingReward(true)
-    try {
-      await rewardsApi.claim()
-      const [updated, bal] = await Promise.all([rewardsApi.status(), wallet.balance()])
-      setDailyReward(updated)
-      setBalance(bal)
-      haptic.notificationOccurred('success')
-    } catch {
-      haptic.notificationOccurred('error')
-    } finally {
-      setClaimingReward(false)
-    }
-  }, [dailyReward, claimingReward, haptic, setBalance])
 
   // ── Login streak challenge claim ─────────────────────────────────────────
   const claimLoginChallenge = useCallback(async () => {
@@ -570,8 +545,7 @@ export function SpinPage() {
 
   // ── Peek summary derived values ───────────────────────────────────────────
   const loginClaimable  = loginChallenge?.my_progress?.claimable ?? false
-  const dailyClaimable  = dailyReward?.can_claim ?? false
-  const hasClaimable    = loginClaimable || dailyClaimable
+  const hasClaimable    = loginClaimable
   const loginStreak     = loginChallenge?.my_progress?.current_count ?? 0
 
   return (
@@ -805,11 +779,6 @@ export function SpinPage() {
                     🔥 Day {loginStreak}
                   </span>
                 )}
-                {dailyReward && (
-                  <span className={`${styles.sheetPeekChip} ${dailyClaimable ? styles.sheetPeekChipGlow : ''}`}>
-                    🪙 Daily
-                  </span>
-                )}
               </div>
               <span className={`${styles.sheetChevron} ${sheetOpen ? styles.sheetChevronOpen : ''}`}>
                 ›
@@ -829,39 +798,6 @@ export function SpinPage() {
                   onClaim={claimLoginChallenge}
                   claiming={claimingChallenge}
                 />
-              </div>
-            )}
-
-            {/* Daily reward */}
-            {dailyReward && (
-              <div className={styles.sheetSection}>
-                <p className={styles.sheetSectionTitle}>Daily Reward</p>
-                <div className={styles.dayStrip}>
-                  {DAY_MULTIPLIERS.map((mult, idx) => {
-                    const day     = idx + 1
-                    const streak  = dailyReward.current_streak
-                    const claimed = day <= streak
-                    const canClaim = day === streak + 1 && dailyReward.can_claim
-                    return (
-                      <div key={day} className={`${styles.dayCard} ${claimed ? styles.dayCardClaimed : ''} ${canClaim ? styles.dayCardActive : ''}`}>
-                        <p className={styles.dayLabel}>Day {day}</p>
-                        <span className={styles.dayIcon}>🪙</span>
-                        <p className={styles.dayMult}>x{mult}</p>
-                        {claimed ? (
-                          <span className={styles.dayCheck}>✓</span>
-                        ) : (
-                          <button
-                            className={`${styles.claimBtn} ${!canClaim ? styles.claimBtnLocked : ''}`}
-                            onClick={canClaim ? claimDailyReward : undefined}
-                            disabled={!canClaim || claimingReward}
-                          >
-                            {claimingReward && canClaim ? '…' : 'Claim'}
-                          </button>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
               </div>
             )}
 

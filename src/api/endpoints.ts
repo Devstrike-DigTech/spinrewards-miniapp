@@ -18,7 +18,6 @@ import type {
   KYCBank,
   KYCDocumentUploadResponse,
   KYCSubmitPayload,
-  DailyRewardStatus,
   User,
   Challenge,
   ChallengeClaimResponse,
@@ -77,21 +76,21 @@ export const wallet = {
 export const deposits = {
   /** Initiate a deposit. Returns provider-specific fields (payment_url / payment_address). */
   initiate: (payload: DepositRequest): Promise<DepositRecord> =>
-    apiClient.post('/payments/deposits/', payload).then((r) => r.data?.data ?? r.data),
+    apiClient.post('/deposits/', payload).then((r) => r.data?.data ?? r.data),
 
   /** Poll this after Paystack redirect until status !== 'pending'. */
   get: (id: string): Promise<DepositRecord> =>
-    apiClient.get(`/payments/deposits/${id}/`).then((r) => r.data?.data ?? r.data),
+    apiClient.get(`/deposits/${id}/`).then((r) => r.data?.data ?? r.data),
 
   /** Paginated deposit history. */
   list: (page = 1): Promise<PaginatedResponse<DepositRecord>> =>
     apiClient
-      .get('/payments/deposits/', { params: { page } })
+      .get('/deposits/list/', { params: { page } })
       .then((r) => r.data?.data ?? r.data),
 
   /** Available crypto currencies for the NOWPayments flow. */
   cryptoCurrencies: (): Promise<{ currencies: CryptoCurrency[] }> =>
-    apiClient.get('/payments/crypto/currencies/').then((r) => r.data?.data ?? r.data),
+    apiClient.get('/deposits/crypto/currencies/').then((r) => r.data?.data ?? r.data),
 }
 
 // ── Spin ──────────────────────────────────────────────────────────────────────
@@ -283,14 +282,4 @@ export const kyc = {
    */
   submit: (payload: KYCSubmitPayload): Promise<KYCStatusResponse> =>
     apiClient.post('/kyc/submit/', payload).then((r) => r.data?.data ?? r.data),
-}
-
-// ── Daily reward (legacy — may be superseded by challenges system) ─────────────
-
-export const rewards = {
-  status: (): Promise<DailyRewardStatus> =>
-    apiClient.get('/rewards/daily/').then((r) => r.data?.data ?? r.data),
-
-  claim: (): Promise<{ amount_credited: number }> =>
-    apiClient.post('/rewards/daily/claim/').then((r) => r.data?.data ?? r.data),
 }
