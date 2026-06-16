@@ -68,6 +68,84 @@
   margin: 16px 2px 8px;
 }
 
+/* ── Compact 2-column grid ── */
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.miniCard {
+  background: #141e35;
+  border: 1px solid #1e2d4d;
+  border-radius: 14px;
+  padding: 12px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.miniCardCash {
+  background: linear-gradient(135deg, #16233f, #11192e);
+}
+.miniTop {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.miniIcon { font-size: 16px; }
+.miniLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.miniValue {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.miniAction {
+  margin-top: 2px;
+  padding: 7px 0;
+  width: 100%;
+  border-radius: 999px;
+  background: #c9a028;
+  color: #0a0a1a;
+  font-size: 13px;
+  font-weight: 700;
+}
+.miniActionOff {
+  background: #20283d;
+  color: #5a6178;
+}
+
+/* ── Slim full-width banner (bonus / staked) ── */
+.slimCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #141e35;
+  border: 1px solid #1e2d4d;
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+.slimIcon { font-size: 22px; flex-shrink: 0; }
+.slimMeta { flex: 1; min-width: 0; }
+.slimLabel { font-size: 14px; font-weight: 700; color: #fff; }
+.slimSub { font-size: 11px; color: var(--color-text-muted); }
+.slimValue {
+  font-size: 18px;
+  font-weight: 800;
+  color: #f5d77a;
+  white-space: nowrap;
+}
+
 .card {
   background: #141e35;
   border: 1px solid #1e2d4d;

@@ -94,67 +94,50 @@ export function WalletPage() {
 
         {/* ── Spendable coin buckets (fund spins) ── */}
         <p className={styles.cardsHeading}>Coins · spin to win</p>
-        <div className={styles.cards}>
-
+        <div className={styles.grid2}>
           {/* Naira Coins */}
-          <div className={styles.card}>
-            <div className={styles.cardLeft}>
-              <span className={styles.cardIcon}>🪙</span>
-              <div>
-                <p className={styles.cardLabel}>Naira Coins</p>
-                <p className={styles.cardValue}>{formatCoins(nairaCoins)}</p>
-                <p className={styles.cardSub}>₦ · win → 100% to Naira balance</p>
-              </div>
+          <div className={styles.miniCard}>
+            <div className={styles.miniTop}>
+              <span className={styles.miniIcon}>🪙</span>
+              <span className={styles.miniLabel}>Naira Coins</span>
             </div>
-            <button className={styles.cardAction} onClick={() => setShowFund(true)}>
-              + Deposit
-            </button>
+            <p className={styles.miniValue}>{formatCoins(nairaCoins)}</p>
+            <button className={styles.miniAction} onClick={() => setShowFund(true)}>+ Deposit</button>
           </div>
 
           {/* Crypto Coins */}
-          <div className={styles.card}>
-            <div className={styles.cardLeft}>
-              <span className={styles.cardIcon}>💎</span>
-              <div>
-                <p className={styles.cardLabel}>Crypto Coins</p>
-                <p className={styles.cardValue}>{formatUsdt(cryptoCoins)}</p>
-                <p className={styles.cardSub}>USDT · win → 100% to Crypto balance</p>
-              </div>
+          <div className={styles.miniCard}>
+            <div className={styles.miniTop}>
+              <span className={styles.miniIcon}>💎</span>
+              <span className={styles.miniLabel}>Crypto Coins</span>
             </div>
-            <button className={styles.cardAction} onClick={() => setShowFund(true)}>
-              + Deposit
-            </button>
+            <p className={styles.miniValue}>{formatUsdt(cryptoCoins)}</p>
+            <button className={styles.miniAction} onClick={() => setShowFund(true)}>+ Deposit</button>
           </div>
+        </div>
 
-          {/* Bonus Coins */}
-          <div className={`${styles.card} ${styles.cardBonus}`}>
-            <div className={styles.cardLeft}>
-              <span className={styles.cardIcon}>🎁</span>
-              <div>
-                <p className={styles.cardLabel}>Bonus Coins</p>
-                <p className={styles.cardValue}>{formatCoins(bonusCoins)}</p>
-                <p className={styles.cardSub}>Spin → {bonusPct}, you pick where it lands</p>
-              </div>
-            </div>
+        {/* Bonus — slim full-width banner */}
+        <div className={styles.slimCard}>
+          <span className={styles.slimIcon}>🎁</span>
+          <div className={styles.slimMeta}>
+            <p className={styles.slimLabel}>Bonus Coins</p>
+            <p className={styles.slimSub}>Spin → {bonusPct}, you pick where it lands</p>
           </div>
+          <p className={styles.slimValue}>{formatCoins(bonusCoins)}</p>
         </div>
 
         {/* ── Withdrawable balances ── */}
         <p className={styles.cardsHeading}>Withdrawable</p>
-        <div className={styles.cards}>
-
-          {/* Naira withdraw balance */}
-          <div className={`${styles.card} ${styles.cardEarnings}`}>
-            <div className={styles.cardLeft}>
-              <span className={styles.cardIcon}>💵</span>
-              <div>
-                <p className={styles.cardLabel}>Naira Balance</p>
-                <p className={styles.cardValue}>{formatNaira(nairaWithdraw)}</p>
-                <p className={styles.cardSub}>→ withdraw to bank</p>
-              </div>
+        <div className={styles.grid2}>
+          {/* Naira balance */}
+          <div className={`${styles.miniCard} ${styles.miniCardCash}`}>
+            <div className={styles.miniTop}>
+              <span className={styles.miniIcon}>💵</span>
+              <span className={styles.miniLabel}>Naira</span>
             </div>
+            <p className={styles.miniValue}>{formatNaira(nairaWithdraw)}</p>
             <button
-              className={`${styles.cardAction} ${!canWithdraw ? styles.cardActionDisabled : ''}`}
+              className={`${styles.miniAction} ${!canWithdraw ? styles.miniActionOff : ''}`}
               onClick={() => canWithdraw && navigate('/withdraw')}
               disabled={!canWithdraw}
             >
@@ -162,39 +145,34 @@ export function WalletPage() {
             </button>
           </div>
 
-          {/* Crypto withdraw balance */}
-          <div className={`${styles.card} ${styles.cardEarnings}`}>
-            <div className={styles.cardLeft}>
-              <span className={styles.cardIcon}>🏦</span>
-              <div>
-                <p className={styles.cardLabel}>Crypto Balance</p>
-                <p className={styles.cardValue}>{formatUsdt(cryptoWithdraw)}</p>
-                <p className={styles.cardSub}>→ withdraw to crypto wallet</p>
-              </div>
+          {/* Crypto balance */}
+          <div className={`${styles.miniCard} ${styles.miniCardCash}`}>
+            <div className={styles.miniTop}>
+              <span className={styles.miniIcon}>🏦</span>
+              <span className={styles.miniLabel}>Crypto</span>
             </div>
+            <p className={styles.miniValue}>{formatUsdt(cryptoWithdraw)}</p>
             <button
-              className={`${styles.cardAction} ${!canWithdraw ? styles.cardActionDisabled : ''}`}
+              className={`${styles.miniAction} ${!canWithdraw ? styles.miniActionOff : ''}`}
               onClick={() => canWithdraw && navigate('/withdraw')}
               disabled={!canWithdraw}
             >
               Withdraw
             </button>
           </div>
-
-          {/* Staked — only when non-zero */}
-          {staked && parseFloat(staked) > 0 && (
-            <div className={`${styles.card} ${styles.cardStake}`}>
-              <div className={styles.cardLeft}>
-                <span className={styles.cardIcon}>🔒</span>
-                <div>
-                  <p className={styles.cardLabel}>Staked</p>
-                  <p className={styles.cardValue}>{formatCoins(staked)}</p>
-                </div>
-              </div>
-              <span className={styles.stakeBadge}>In Play</span>
-            </div>
-          )}
         </div>
+
+        {/* Staked — slim, only when non-zero */}
+        {staked && parseFloat(staked) > 0 && (
+          <div className={styles.slimCard}>
+            <span className={styles.slimIcon}>🔒</span>
+            <div className={styles.slimMeta}>
+              <p className={styles.slimLabel}>Staked</p>
+              <p className={styles.slimSub}>In play this round</p>
+            </div>
+            <p className={styles.slimValue}>{formatCoins(staked)}</p>
+          </div>
+        )}
 
         {/* ── KYC Banner ── */}
         {!kycVerified && (
