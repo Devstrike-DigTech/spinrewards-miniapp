@@ -9,8 +9,8 @@ interface SettingsState {
 
 /**
  * Stores public app configuration fetched from /settings/public/ on launch.
- * Read dynamic values (min deposits, coin rates, payout %) from here
- * rather than hardcoding them anywhere in the UI.
+ * Read dynamic values (min deposits/withdrawals, bonus rate, crypto flag) from
+ * here rather than hardcoding them anywhere in the UI.
  */
 export const useSettingsStore = create<SettingsState>()((set) => ({
   settings: null,
@@ -21,21 +21,30 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
 
 // ── Convenience selectors ─────────────────────────────────────────────────────
 
-/** Bonus wallet payout rate as a percentage string e.g. "40%" */
+/** Bonus payout rate as a percentage string e.g. "40%" */
 export function bonusPayoutLabel(settings: PublicSettings | null): string {
   if (!settings) return '40%'
-  const rate = parseFloat(settings.bonus_wallet_payout_rate)
+  const rate = parseFloat(settings.bonus_payout_rate)
   return `${Math.round(rate * 100)}%`
 }
 
-/** "You'll get X coins" preview for an NGN deposit amount */
-export function coinsForNgn(amountNgn: number, settings: PublicSettings | null): number {
-  if (!settings) return amountNgn
-  return Math.floor(amountNgn * parseFloat(settings.coins_per_ngn))
+/** Coins credited for an NGN deposit — 1:1 in v3 (₦1 → 1 naira coin) */
+export function coinsForNgn(amountNgn: number): number {
+  return Math.floor(amountNgn)
 }
 
-/** "You'll get X coins" preview for a USD deposit amount */
-export function coinsForUsd(amountUsd: number, settings: PublicSettings | null): number {
-  if (!settings) return amountUsd * 1500
-  return Math.floor(amountUsd * parseFloat(settings.coins_per_usd))
+/** Coins credited for a USD deposit — 1:1 in v3 (1 USDT → 1 crypto coin) */
+export function coinsForUsd(amountUsd: number): number {
+  return amountUsd
+}
+
+/** Whether the crypto withdrawal rail is currently enabled */
+export function cryptoWithdrawalEnabled(settings: PublicSettings | null): boolean {
+  return settings?.crypto_withdrawal_enabled ?? false
+}
+
+/** Display-only NGN ≈ for a USDT amount, using the display rate */
+export function usdToNgnDisplay(amountUsd: number, settings: PublicSettings | null): number {
+  const rate = settings ? parseFloat(settings.ngn_per_usd_display_rate) : 1500
+  return Math.round(amountUsd * rate)
 }

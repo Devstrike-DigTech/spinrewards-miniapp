@@ -14,6 +14,7 @@ import type {
   WithdrawalRecord,
   WithdrawPayload,
   SavedBankAccount,
+  CryptoWallet,
   KYCStatusResponse,
   KYCBank,
   KYCDocumentUploadResponse,
@@ -62,8 +63,12 @@ export const settings = {
 // ── Wallet ────────────────────────────────────────────────────────────────────
 
 export const wallet = {
+  /** v3: balances live under data.wallet (top-level dupes kept for back-compat). */
   balance: (): Promise<WalletBalance> =>
-    apiClient.get('/wallet/').then((r) => r.data?.data ?? r.data),
+    apiClient.get('/wallet/').then((r) => {
+      const d = r.data?.data ?? r.data
+      return (d?.wallet ?? d) as WalletBalance
+    }),
 
   transactions: (page = 1, pageSize = 20): Promise<PaginatedResponse<TransactionRecord>> =>
     apiClient
@@ -244,6 +249,27 @@ export const withdrawals = {
     apiClient
       .post(`/withdrawals/${id}/cancel/`)
       .then((r) => r.data?.data ?? r.data),
+}
+
+// ── Crypto wallets (v3 — saved TRC-20 payout addresses) ─────────────────────────
+
+export const cryptoWallets = {
+  list: (): Promise<{ wallets: CryptoWallet[] }> =>
+    apiClient.get('/crypto-wallets/').then((r) => r.data?.data ?? r.data),
+
+  /** Validate + save a TRC-20 address. Throws INVALID_WALLET_ADDRESS on bad format. */
+  add: (address: string, label = '', setDefault = false): Promise<CryptoWallet> =>
+    apiClient
+      .post('/crypto-wallets/', { address, network: 'TRC20', label, set_default: setDefault })
+      .then((r) => r.data?.data ?? r.data),
+
+  setDefault: (id: string): Promise<CryptoWallet> =>
+    apiClient
+      .patch(`/crypto-wallets/${id}/`, { action: 'set_default' })
+      .then((r) => r.data?.data ?? r.data),
+
+  remove: (id: string): Promise<void> =>
+    apiClient.delete(`/crypto-wallets/${id}/`).then(() => undefined),
 }
 
 // ── KYC ───────────────────────────────────────────────────────────────────────

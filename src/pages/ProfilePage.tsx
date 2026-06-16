@@ -213,13 +213,13 @@ export function ProfilePage() {
         <div className={profileStyles.statsRow}>
           <div className={profileStyles.statBox}>
             <span className={profileStyles.statValue}>
-              {formatAmount(balance?.earnings)}
+              {formatAmount(balance?.naira_withdraw_balance)}
             </span>
-            <span className={profileStyles.statLabel}>Earnings</span>
+            <span className={profileStyles.statLabel}>Naira</span>
           </div>
           <div className={profileStyles.statBox}>
             <span className={profileStyles.statValue}>
-              {formatCoins(balance?.deposit_coins)}
+              {formatCoins(balance?.naira_coins)}
             </span>
             <span className={profileStyles.statLabel}>Coins</span>
           </div>
