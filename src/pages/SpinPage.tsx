@@ -152,13 +152,8 @@ export function SpinPage() {
   // Mute
   const [muted, setMuted] = useState(false)
 
-  // ── Bottom sheet (hidden when closed; opened via the top-bar Rewards button) ─
-  const [sheetOpen, setSheetOpen]     = useState(false)
-  const [isDragging, setIsDragging]   = useState(false)
-  const [dragOffset, setDragOffset]   = useState(0)
-  const dragStartY    = useRef(0)
-  const dragStartOpen = useRef(false)
-  const sheetRef      = useRef<HTMLDivElement>(null)
+  // ── Rewards sheet (FAB-triggered; scales out of the FAB corner) ─────────────
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   // ── Load active wheels + supplemental data on mount ───────────────────────
   useEffect(() => {
@@ -393,41 +388,12 @@ export function SpinPage() {
     sounds.setMuted(next)
   }, [muted])
 
-  // ── Sheet drag handlers ───────────────────────────────────────────────────
   const openSheet = useCallback(() => {
     haptic.impactOccurred('light')
     setSheetOpen(true)
   }, [haptic])
 
   const closeSheet = useCallback(() => setSheetOpen(false), [])
-
-  const handleDragStart = useCallback((e: React.TouchEvent) => {
-    dragStartY.current    = e.touches[0].clientY
-    dragStartOpen.current = sheetOpen
-    setIsDragging(true)
-    setDragOffset(0)
-  }, [sheetOpen])
-
-  const handleDragMove = useCallback((e: React.TouchEvent) => {
-    e.preventDefault()
-    setDragOffset(e.touches[0].clientY - dragStartY.current)
-  }, [])
-
-  const handleDragEnd = useCallback(() => {
-    setIsDragging(false)
-    // Sheet is only draggable while open — dragging down far enough closes it
-    setSheetOpen(dragOffset < 100)
-    setDragOffset(0)
-  }, [dragOffset])
-
-  /** Sheet transform: fully off-screen when closed, so it never covers the spin controls. */
-  function sheetTransform(): string {
-    const h = sheetRef.current?.offsetHeight ?? 440
-    if (isDragging) {
-      return `translateY(${Math.max(0, Math.min(h, dragOffset))}px)`
-    }
-    return sheetOpen ? 'translateY(0)' : 'translateY(100%)'
-  }
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const nairaNum  = parseFloat(nairaCoins ?? '0')
@@ -579,9 +545,6 @@ export function SpinPage() {
             </div>
             <div className={styles.topRight}>
               <button className={styles.iconBtn} onClick={toggleMute}>{muted ? '🔇' : '🔊'}</button>
-              <button className={styles.iconBtn} onClick={openSheet}>
-                🎁{hasClaimable && <span className={styles.iconBtnDot} />}
-              </button>
               <button
                 className={`${styles.kycBadge} ${kycOverall === 'approved' ? styles.kycBadgeVerified : kycOverall === 'partial' || kycOverall === 'rejected' ? styles.kycBadgeWarn : ''}`}
                 onClick={() => navigate('/kyc')}
@@ -771,28 +734,22 @@ export function SpinPage() {
 
         </div>{/* end .spinContent */}
 
+        {/* ══ FLOATING ACTION BUTTON — opens the rewards sheet ══ */}
+        {!sheetOpen && (
+          <button className={styles.fab} onClick={openSheet} aria-label="Rewards & recent spins">
+            🎁{hasClaimable && <span className={styles.fabDot} />}
+          </button>
+        )}
+
         {/* ══ DIM OVERLAY — tap to close sheet ══ */}
         {sheetOpen && (
           <div className={styles.dimOverlay} onClick={closeSheet} />
         )}
 
-        {/* ══ PULL-UP BOTTOM SHEET ══ */}
-        <div
-          ref={sheetRef}
-          className={styles.sheet}
-          style={{
-            transform: sheetTransform(),
-            transition: isDragging ? 'none' : 'transform 0.42s cubic-bezier(0.32, 0.72, 0, 1)',
-          }}
-        >
-          {/* ── Peek area: handle + summary row ── */}
-          <div
-            className={styles.sheetPeek}
-            onTouchStart={handleDragStart}
-            onTouchMove={handleDragMove}
-            onTouchEnd={handleDragEnd}
-            onClick={sheetOpen ? closeSheet : openSheet}
-          >
+        {/* ══ REWARDS SHEET (scales out of the FAB corner) ══ */}
+        <div className={`${styles.sheet} ${sheetOpen ? styles.sheetOpen : ''}`}>
+          {/* ── Header ── */}
+          <div className={styles.sheetPeek}>
             <div className={styles.sheetHandleBar} />
             <div className={styles.sheetPeekRow}>
               <span className={styles.sheetPeekTitle}>
@@ -806,9 +763,7 @@ export function SpinPage() {
                   </span>
                 )}
               </div>
-              <span className={`${styles.sheetChevron} ${sheetOpen ? styles.sheetChevronOpen : ''}`}>
-                ›
-              </span>
+              <button className={styles.sheetClose} onClick={closeSheet} aria-label="Close">✕</button>
             </div>
           </div>
 
