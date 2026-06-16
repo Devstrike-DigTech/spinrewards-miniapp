@@ -59,6 +59,15 @@
   gap: 12px;
 }
 
+.cardsHeading {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  margin: 16px 2px 8px;
+}
+
 .card {
   background: #141e35;
   border: 1px solid #1e2d4d;

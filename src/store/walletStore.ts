@@ -2,17 +2,14 @@ import { create } from 'zustand'
 import type { WalletBalance } from '@/types'
 
 interface WalletState {
-  /** Coins funded by cash/crypto deposits. Spinnable → 100% of win to earnings. */
-  depositCoins: string | null
-  /** Coins funded by challenge rewards. Spinnable → 40% of win to earnings. */
-  bonusCoins: string | null
-  /** Sum of deposit_coins + bonus_coins */
-  totalCoins: string | null
-  /** NGN earnings from wins and deposit_credit rewards. Withdrawable. */
-  earnings: string | null
-  /** USD equivalent of earnings (display only) */
-  earningsUsd: string | null
-  /** Currently staked amount */
+  // Spendable (fund spins)
+  cryptoCoins: string | null   // USDT-pegged 1:1
+  nairaCoins: string | null    // NGN-pegged 1:1
+  bonusCoins: string | null    // platform units
+  // Withdrawable
+  cryptoWithdraw: string | null // USDT, → crypto wallet
+  nairaWithdraw: string | null  // NGN, → bank account
+  // Transient hold during an in-flight spin
   staked: string | null
   isLoading: boolean
   /** Hydrate the store from a fresh WalletBalance API response */
@@ -21,21 +18,21 @@ interface WalletState {
 }
 
 export const useWalletStore = create<WalletState>()((set) => ({
-  depositCoins: null,
+  cryptoCoins: null,
+  nairaCoins: null,
   bonusCoins: null,
-  totalCoins: null,
-  earnings: null,
-  earningsUsd: null,
+  cryptoWithdraw: null,
+  nairaWithdraw: null,
   staked: null,
   isLoading: false,
 
   setBalance: (data) =>
     set({
-      depositCoins: data.deposit_coins,
+      cryptoCoins: data.crypto_coins,
+      nairaCoins: data.naira_coins,
       bonusCoins: data.bonus_coins,
-      totalCoins: data.total_coins,
-      earnings: data.earnings,
-      earningsUsd: data.earnings_usd_equivalent,
+      cryptoWithdraw: data.crypto_withdraw_balance,
+      nairaWithdraw: data.naira_withdraw_balance,
       staked: data.staked,
     }),
 

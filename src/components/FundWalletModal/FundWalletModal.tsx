@@ -52,8 +52,8 @@ export function FundWalletModal({ onClose, onSuccess }: Props) {
   const minAmount = isCrypto ? minUsd : minNgn
   const amountNum = parseFloat(amount) || 0
   const coinPreview = isCrypto
-    ? coinsForUsd(amountNum, settings)
-    : coinsForNgn(amountNum, settings)
+    ? coinsForUsd(amountNum)
+    : coinsForNgn(amountNum)
 
   const handleSubmit = useCallback(async () => {
     const num = parseFloat(amount)
@@ -69,7 +69,7 @@ export function FundWalletModal({ onClose, onSuccess }: Props) {
 
     try {
       const record = await deposits.initiate({
-        amount: num,
+        amount: String(num),
         provider,
         ...(isCrypto ? { pay_currency: payCurrency } : {}),
       })

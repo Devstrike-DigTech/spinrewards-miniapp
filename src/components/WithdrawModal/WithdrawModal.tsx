@@ -70,7 +70,8 @@ export function WithdrawModal({ cashBalance, onClose, onSuccess }: Props) {
 
     try {
       await withdrawals.submit({
-        amount: num,
+        rail: 'bank',
+        amount: String(num),
         bank_code: bankCode,
         account_number: accountNumber,
       })

@@ -10,8 +10,8 @@ import { useWalletStore } from '@/store/walletStore'
 import { useTelegram } from '@/hooks/useTelegram'
 import { sounds } from '@/lib/sounds'
 import { getWheelVisualConfig, deriveStakePresets, segmentsFromApi } from '@/lib/wheelConfig'
-import { formatNaira, formatCoins } from '@/lib/format'
-import type { WheelRecord, SpinResult, KYCOverallStatus, Challenge } from '@/types'
+import { formatNaira, formatCoins, formatUsdt } from '@/lib/format'
+import type { WheelRecord, SpinResult, KYCOverallStatus, Challenge, SpinSource, BonusDestination } from '@/types'
 import styles from './SpinPage.module.css'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -107,8 +107,9 @@ export function SpinPage() {
   const engineRef = useRef<SpinEngine | null>(null)
   const navigate = useNavigate()
   const { haptic } = useTelegram()
-  const { depositCoins, bonusCoins, setBalance } = useWalletStore()
-  const [sourceWallet, setSourceWallet] = useState<'deposit_coins' | 'bonus_coins'>('deposit_coins')
+  const { cryptoCoins, nairaCoins, bonusCoins, setBalance } = useWalletStore()
+  const [sourceWallet, setSourceWallet] = useState<SpinSource>('naira_coins')
+  const [bonusDestination, setBonusDestination] = useState<BonusDestination>('naira')
   const toast = useMiniToast()
 
   // All active wheels — used to derive stake presets
@@ -148,8 +149,7 @@ export function SpinPage() {
   // Mute
   const [muted, setMuted] = useState(false)
 
-  // ── Bottom sheet ─────────────────────────────────────────────────────────
-  const PEEK = 90 // px visible when collapsed
+  // ── Bottom sheet (hidden when closed; opened via the top-bar Rewards button) ─
   const [sheetOpen, setSheetOpen]     = useState(false)
   const [isDragging, setIsDragging]   = useState(false)
   const [dragOffset, setDragOffset]   = useState(0)
@@ -322,6 +322,7 @@ export function SpinPage() {
         wheel_id: resolvedWheel.id,
         stake_amount: num.toFixed(2),
         source_wallet: sourceWallet,
+        ...(sourceWallet === 'bonus_coins' ? { bonus_destination: bonusDestination } : {}),
       })
       setSpinResult(result)
       setPhase('spinning')
@@ -334,7 +335,7 @@ export function SpinPage() {
       setPhase('error')
       haptic.notificationOccurred('error')
     }
-  }, [phase, resolvedWheel, stake, sourceWallet, haptic])
+  }, [phase, resolvedWheel, stake, sourceWallet, bonusDestination, haptic])
 
   // Called by SpinEngine when animation starts
   const handleSpinStart = useCallback(() => {
@@ -411,34 +412,37 @@ export function SpinPage() {
 
   const handleDragEnd = useCallback(() => {
     setIsDragging(false)
-    // snap open / closed based on drag direction and distance
-    if (dragStartOpen.current) {
-      setSheetOpen(dragOffset < 60)   // dragged down < 60px → stay open
-    } else {
-      setSheetOpen(dragOffset < -40)  // dragged up  > 40px → open
-    }
+    // Sheet is only draggable while open — dragging down far enough closes it
+    setSheetOpen(dragOffset < 100)
     setDragOffset(0)
   }, [dragOffset])
 
-  /** Returns the CSS transform string for the sheet at any point in time. */
+  /** Sheet transform: fully off-screen when closed, so it never covers the spin controls. */
   function sheetTransform(): string {
-    const fullTranslate = (sheetRef.current?.offsetHeight ?? 440) - PEEK
-    if (!isDragging) {
-      return sheetOpen ? 'translateY(0)' : `translateY(${fullTranslate}px)`
+    const h = sheetRef.current?.offsetHeight ?? 440
+    if (isDragging) {
+      return `translateY(${Math.max(0, Math.min(h, dragOffset))}px)`
     }
-    // Real-time finger-following, clamped to valid range
-    if (dragStartOpen.current) {
-      return `translateY(${Math.max(0, Math.min(fullTranslate, dragOffset))}px)`
-    } else {
-      return `translateY(${Math.max(0, Math.min(fullTranslate, fullTranslate + dragOffset))}px)`
-    }
+    return sheetOpen ? 'translateY(0)' : 'translateY(100%)'
   }
 
   // ── Derived ───────────────────────────────────────────────────────────────
+  const nairaNum  = parseFloat(nairaCoins ?? '0')
+  const cryptoNum = parseFloat(cryptoCoins ?? '0')
+  const bonusNum  = parseFloat(bonusCoins ?? '0')
+
+  // Auto-select a funded bucket if the current one is empty
+  useEffect(() => {
+    const bal = sourceWallet === 'crypto_coins' ? cryptoNum : sourceWallet === 'bonus_coins' ? bonusNum : nairaNum
+    if (bal > 0) return
+    if (nairaNum > 0) setSourceWallet('naira_coins')
+    else if (cryptoNum > 0) setSourceWallet('crypto_coins')
+    else if (bonusNum > 0) setSourceWallet('bonus_coins')
+  }, [sourceWallet, nairaNum, cryptoNum, bonusNum])
+
   // Check the selected wallet has enough balance for the stake
-  const selectedBalance = parseFloat(
-    (sourceWallet === 'deposit_coins' ? depositCoins : bonusCoins) ?? '0'
-  )
+  const selectedBalance =
+    sourceWallet === 'crypto_coins' ? cryptoNum : sourceWallet === 'bonus_coins' ? bonusNum : nairaNum
   const canSpin =
     phase === 'idle' &&
     lookupState === 'found' &&
@@ -454,8 +458,13 @@ export function SpinPage() {
     const isLoss = spinResult.outcome === 'loss'
     const isPush = spinResult.outcome === 'push'
 
+    // Currency-aware payout: prefer net_credited (esp. for bonus spins)
+    const payCurrency = spinResult.payout_currency
+    const fmtPay = (v?: string) => (payCurrency === 'USDT' ? formatUsdt(v) : formatNaira(v))
+    const winRaw = spinResult.net_credited ?? spinResult.payout_amount
+
     const shareText = isWin
-      ? `🎉 I just won ${formatNaira(spinResult.payout_amount)} on Spin Rewards! Join me 👉 https://t.me/SpinRewardsBot`
+      ? `🎉 I just won ${fmtPay(winRaw)} on Spin Rewards! Join me 👉 https://t.me/SpinRewardsBot`
       : `🎡 I'm spinning on Spin Rewards — come join! 👉 https://t.me/SpinRewardsBot`
 
     const handleShare = () => {
@@ -478,8 +487,10 @@ export function SpinPage() {
               <div className={styles.resultIllustration}>🎉</div>
               <p className={styles.resultHeading}>Congratulations!</p>
               <p className={styles.resultWinSub}>You won</p>
-              <p className={styles.resultAmount}>{formatNaira(spinResult.payout_amount)}</p>
-              <p className={styles.resultSub}>Added to your withdrawable balance</p>
+              <p className={styles.resultAmount}>{fmtPay(winRaw)}</p>
+              <p className={styles.resultSub}>
+                Added to your {payCurrency === 'USDT' ? 'Crypto' : 'Naira'} balance
+              </p>
             </>
           ) : isLoss ? (
             <>
@@ -498,11 +509,13 @@ export function SpinPage() {
             <>
               <div className={styles.resultIllustration} style={{ fontSize: 100 }}>↩️</div>
               <p className={styles.resultHeading}>{isPush ? 'Stake Returned!' : 'Partial Return'}</p>
-              <p className={styles.resultAmount}>{formatNaira(spinResult.payout_amount)}</p>
+              <p className={styles.resultAmount}>
+                {isPush ? `${formatCoins(spinResult.payout_amount)} coins` : fmtPay(winRaw)}
+              </p>
               <p className={styles.resultSub}>
                 {isPush
-                  ? 'Your full stake has been returned'
-                  : `Partial return on ${formatNaira(spinResult.stake_amount)} stake`}
+                  ? 'Your full stake has been returned to your coins'
+                  : `Partial return on ${formatCoins(spinResult.stake_amount)} coin stake`}
               </p>
             </>
           )}
@@ -559,13 +572,13 @@ export function SpinPage() {
           <div className={styles.topBar}>
             <div className={styles.coinPill}>
               <span>🪙</span>
-              <span className={styles.coinPillValue}>{formatCoins(
-                String(parseFloat(depositCoins ?? '0') + parseFloat(bonusCoins ?? '0'))
-              )}</span>
+              <span className={styles.coinPillValue}>🪙 {formatCoins(nairaCoins)}</span>
             </div>
             <div className={styles.topRight}>
               <button className={styles.iconBtn} onClick={toggleMute}>{muted ? '🔇' : '🔊'}</button>
-              <button className={styles.iconBtn}>🔔</button>
+              <button className={styles.iconBtn} onClick={openSheet}>
+                🎁{hasClaimable && <span className={styles.iconBtnDot} />}
+              </button>
               <button
                 className={`${styles.kycBadge} ${kycOverall === 'approved' ? styles.kycBadgeVerified : kycOverall === 'partial' || kycOverall === 'rejected' ? styles.kycBadgeWarn : ''}`}
                 onClick={() => navigate('/kyc')}
@@ -641,36 +654,57 @@ export function SpinPage() {
               )}
             </div>
 
-            {/* ── Source wallet picker ── */}
+            {/* ── Source wallet picker (3 buckets) ── */}
             {phase === 'idle' && (
               <div className={styles.walletPicker}>
                 <button
-                  className={`${styles.walletPickerOption} ${sourceWallet === 'deposit_coins' ? styles.walletPickerSelected : ''}`}
-                  onClick={() => setSourceWallet('deposit_coins')}
-                  disabled={parseFloat(depositCoins ?? '0') <= 0}
+                  className={`${styles.walletPickerOption} ${sourceWallet === 'naira_coins' ? styles.walletPickerSelected : ''}`}
+                  onClick={() => setSourceWallet('naira_coins')}
+                  disabled={nairaNum <= 0}
                 >
-                  <span className={styles.walletPickerRadio} />
-                  <span className={styles.walletPickerIcon}>💰</span>
+                  <span className={styles.walletPickerIcon}>🪙</span>
                   <span className={styles.walletPickerLabel}>
-                    Deposit{' '}
-                    <span className={styles.walletPickerBal}>
-                      {formatCoins(depositCoins)}
-                    </span>
+                    Naira <span className={styles.walletPickerBal}>{formatCoins(nairaCoins)}</span>
+                  </span>
+                </button>
+                <button
+                  className={`${styles.walletPickerOption} ${sourceWallet === 'crypto_coins' ? styles.walletPickerSelected : ''}`}
+                  onClick={() => setSourceWallet('crypto_coins')}
+                  disabled={cryptoNum <= 0}
+                >
+                  <span className={styles.walletPickerIcon}>💎</span>
+                  <span className={styles.walletPickerLabel}>
+                    Crypto <span className={styles.walletPickerBal}>{formatUsdt(cryptoCoins)}</span>
                   </span>
                 </button>
                 <button
                   className={`${styles.walletPickerOption} ${sourceWallet === 'bonus_coins' ? styles.walletPickerSelected : ''}`}
                   onClick={() => setSourceWallet('bonus_coins')}
-                  disabled={parseFloat(bonusCoins ?? '0') <= 0}
+                  disabled={bonusNum <= 0}
                 >
-                  <span className={styles.walletPickerRadio} />
                   <span className={styles.walletPickerIcon}>🎁</span>
                   <span className={styles.walletPickerLabel}>
-                    Bonus{' '}
-                    <span className={styles.walletPickerBal}>
-                      {formatCoins(bonusCoins)}
-                    </span>
+                    Bonus <span className={styles.walletPickerBal}>{formatCoins(bonusCoins)}</span>
                   </span>
+                </button>
+              </div>
+            )}
+
+            {/* ── Bonus destination (only for bonus spins) ── */}
+            {phase === 'idle' && sourceWallet === 'bonus_coins' && (
+              <div className={styles.destRow}>
+                <span className={styles.destLabel}>Win goes to</span>
+                <button
+                  className={`${styles.destOption} ${bonusDestination === 'naira' ? styles.destSelected : ''}`}
+                  onClick={() => setBonusDestination('naira')}
+                >
+                  ₦ Naira
+                </button>
+                <button
+                  className={`${styles.destOption} ${bonusDestination === 'crypto' ? styles.destSelected : ''}`}
+                  onClick={() => setBonusDestination('crypto')}
+                >
+                  $ Crypto
                 </button>
               </div>
             )}

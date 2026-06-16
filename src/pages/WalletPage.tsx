@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { wallet, kyc, withdrawals as withdrawalsApi } from '@/api/endpoints'
 import { useWalletStore } from '@/store/walletStore'
 import { useSettingsStore, bonusPayoutLabel } from '@/store/settingsStore'
-import { formatNaira, formatCoins, formatDate } from '@/lib/format'
+import { formatNaira, formatCoins, formatUsdt, formatDate } from '@/lib/format'
 import { FundWalletModal } from '@/components/FundWalletModal/FundWalletModal'
 import type { TransactionRecord, KYCStatusResponse, WithdrawalRecord, WithdrawalStatus } from '@/types'
 import styles from './WalletPage.module.css'
@@ -11,7 +11,7 @@ import styles from './WalletPage.module.css'
 export function WalletPage() {
   const navigate = useNavigate()
   const {
-    depositCoins, bonusCoins, earnings, earningsUsd, staked,
+    cryptoCoins, nairaCoins, bonusCoins, cryptoWithdraw, nairaWithdraw, staked,
     setBalance,
   } = useWalletStore()
   const { settings } = useSettingsStore()
@@ -82,8 +82,9 @@ export function WalletPage() {
   }
 
   const kycVerified = kycStatus?.nin_verified === true || kycStatus?.overall_status === 'approved'
-  const earningsNum = parseFloat(earnings ?? '0')
-  const canWithdraw = (kycVerified || kycStatus?.can_withdraw === true) && earningsNum > 0
+  const hasWithdrawable =
+    parseFloat(nairaWithdraw ?? '0') > 0 || parseFloat(cryptoWithdraw ?? '0') > 0
+  const canWithdraw = (kycVerified || kycStatus?.can_withdraw === true) && hasWithdrawable
   const bonusPct = bonusPayoutLabel(settings)
 
   return (
@@ -91,17 +92,33 @@ export function WalletPage() {
       <div className={styles.page}>
         <h1 className={styles.pageTitle}>Wallet</h1>
 
-        {/* ── Balance Cards ── */}
+        {/* ── Spendable coin buckets (fund spins) ── */}
+        <p className={styles.cardsHeading}>Coins · spin to win</p>
         <div className={styles.cards}>
 
-          {/* Deposit Coins */}
+          {/* Naira Coins */}
           <div className={styles.card}>
             <div className={styles.cardLeft}>
-              <span className={styles.cardIcon}>💰</span>
+              <span className={styles.cardIcon}>🪙</span>
               <div>
-                <p className={styles.cardLabel}>Deposit Coins</p>
-                <p className={styles.cardValue}>{formatCoins(depositCoins)}</p>
-                <p className={styles.cardSub}>Spin to win → 100% to earnings</p>
+                <p className={styles.cardLabel}>Naira Coins</p>
+                <p className={styles.cardValue}>{formatCoins(nairaCoins)}</p>
+                <p className={styles.cardSub}>₦ · win → 100% to Naira balance</p>
+              </div>
+            </div>
+            <button className={styles.cardAction} onClick={() => setShowFund(true)}>
+              + Deposit
+            </button>
+          </div>
+
+          {/* Crypto Coins */}
+          <div className={styles.card}>
+            <div className={styles.cardLeft}>
+              <span className={styles.cardIcon}>💎</span>
+              <div>
+                <p className={styles.cardLabel}>Crypto Coins</p>
+                <p className={styles.cardValue}>{formatUsdt(cryptoCoins)}</p>
+                <p className={styles.cardSub}>USDT · win → 100% to Crypto balance</p>
               </div>
             </div>
             <button className={styles.cardAction} onClick={() => setShowFund(true)}>
@@ -116,21 +133,43 @@ export function WalletPage() {
               <div>
                 <p className={styles.cardLabel}>Bonus Coins</p>
                 <p className={styles.cardValue}>{formatCoins(bonusCoins)}</p>
-                <p className={styles.cardSub}>Spin to win → {bonusPct} to earnings</p>
+                <p className={styles.cardSub}>Spin → {bonusPct}, you pick where it lands</p>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Earnings */}
+        {/* ── Withdrawable balances ── */}
+        <p className={styles.cardsHeading}>Withdrawable</p>
+        <div className={styles.cards}>
+
+          {/* Naira withdraw balance */}
           <div className={`${styles.card} ${styles.cardEarnings}`}>
             <div className={styles.cardLeft}>
               <span className={styles.cardIcon}>💵</span>
               <div>
-                <p className={styles.cardLabel}>Earnings</p>
-                <p className={styles.cardValue}>{formatNaira(earnings)}</p>
-                {earningsUsd && parseFloat(earningsUsd) > 0 && (
-                  <p className={styles.cardSub}>≈ ${parseFloat(earningsUsd).toFixed(2)}</p>
-                )}
+                <p className={styles.cardLabel}>Naira Balance</p>
+                <p className={styles.cardValue}>{formatNaira(nairaWithdraw)}</p>
+                <p className={styles.cardSub}>→ withdraw to bank</p>
+              </div>
+            </div>
+            <button
+              className={`${styles.cardAction} ${!canWithdraw ? styles.cardActionDisabled : ''}`}
+              onClick={() => canWithdraw && navigate('/withdraw')}
+              disabled={!canWithdraw}
+            >
+              Withdraw
+            </button>
+          </div>
+
+          {/* Crypto withdraw balance */}
+          <div className={`${styles.card} ${styles.cardEarnings}`}>
+            <div className={styles.cardLeft}>
+              <span className={styles.cardIcon}>🏦</span>
+              <div>
+                <p className={styles.cardLabel}>Crypto Balance</p>
+                <p className={styles.cardValue}>{formatUsdt(cryptoWithdraw)}</p>
+                <p className={styles.cardSub}>→ withdraw to crypto wallet</p>
               </div>
             </div>
             <button
@@ -198,15 +237,17 @@ export function WalletPage() {
                   </div>
                   <div className={styles.txMeta}>
                     <p className={styles.txDescription}>
-                      {wd.bank_account
-                        ? `${wd.bank_account.bank_name} ${wd.bank_account.account_number_masked}`
-                        : 'Bank Withdrawal'}
+                      {wd.rail === 'crypto'
+                        ? `Crypto ${wd.wallet_address ? `${wd.wallet_address.slice(0, 6)}…${wd.wallet_address.slice(-4)}` : 'wallet'}`
+                        : wd.bank_account
+                          ? `${wd.bank_account.bank_name} ${wd.bank_account.account_number_masked}`
+                          : 'Bank Withdrawal'}
                     </p>
                     <p className={styles.txDate}>{formatDate(wd.requested_at)}</p>
                   </div>
                   <div className={styles.txAmountWrap}>
                     <p className={`${styles.txAmount} ${styles.txDebit}`}>
-                      -{formatNaira(wd.amount)}
+                      -{wd.currency === 'USDT' ? formatUsdt(wd.amount) : formatNaira(wd.amount)}
                     </p>
                     <p className={`${styles.txStatus} ${getWdStatusClass(wd.status, styles)}`}>
                       {getWdStatusLabel(wd.status)}
@@ -237,9 +278,13 @@ export function WalletPage() {
                   <div className={styles.txAmountWrap}>
                     <p className={`${styles.txAmount} ${isCredit(tx) ? styles.txCredit : styles.txDebit}`}>
                       {isCredit(tx) ? '+' : ''}
-                      {tx.balance_type === 'earnings'
-                        ? formatNaira(tx.amount)
-                        : `🪙 ${formatCoins(tx.amount)}`}
+                      {tx.currency === 'USDT' || tx.balance_type === 'crypto_coins' || tx.balance_type === 'crypto_withdraw'
+                        ? formatUsdt(tx.amount)
+                        : tx.balance_type === 'naira_withdraw'
+                          ? formatNaira(tx.amount)
+                          : tx.balance_type === 'bonus_coins'
+                            ? `🎁 ${formatCoins(tx.amount)}`
+                            : `🪙 ${formatCoins(tx.amount)}`}
                     </p>
                     <p className={`${styles.txStatus} ${styles[`txStatus_${tx.status}`]}`}>
                       {tx.status}

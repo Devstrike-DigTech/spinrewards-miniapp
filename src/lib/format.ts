@@ -13,6 +13,17 @@ export function formatCoins(amount: string | null | undefined): string {
   return whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
+/** Format a decimal string as $1,234.56 (USDT — up to 6dp, trailing zeros trimmed) */
+export function formatUsdt(amount: string | null | undefined): string {
+  if (!amount) return '$0'
+  const n = parseFloat(amount)
+  if (isNaN(n)) return '$0'
+  const trimmed = n.toFixed(6).replace(/\.?0+$/, '')
+  const [whole, dec] = trimmed.split('.')
+  const withCommas = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return `$${dec ? `${withCommas}.${dec}` : withCommas}`
+}
+
 /** Format an ISO date string as "April 21, 2026" */
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-NG', {

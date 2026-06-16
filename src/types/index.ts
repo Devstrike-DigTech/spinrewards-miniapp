@@ -30,24 +30,38 @@ export interface User {
   created_at: string
 }
 
-// Wallet — three distinct balances
+// Wallet — v3 six balances. Never sum across currencies.
+//   Spendable (fund spins):  crypto_coins (USDT-pegged), naira_coins (NGN-pegged), bonus_coins
+//   Withdrawable:            crypto_withdraw_balance (USDT), naira_withdraw_balance (NGN)
+//   Transient:               staked (hold during an in-flight spin)
 export interface WalletBalance {
-  deposit_coins: string        // funded by cash/crypto deposits; spinnable → 100% to earnings
-  bonus_coins: string          // funded by challenge rewards; spinnable → 40% to earnings
-  total_coins: string          // deposit_coins + bonus_coins
-  earnings: string             // NGN; result of wins + deposit_credit rewards; withdrawable
-  earnings_usd_equivalent: string
+  crypto_coins: string
+  naira_coins: string
+  bonus_coins: string
+  crypto_withdraw_balance: string
+  naira_withdraw_balance: string
   staked: string
+}
+
+// Optional caps block also returned by /wallet/
+export interface CurrencyCaps {
+  min_deposit_ngn: string
+  min_deposit_usd: string
+  min_withdrawal_ngn: string
+  min_withdrawal_usdt: string
 }
 
 // Public app settings (fetched once on launch from /settings/public/)
 export interface PublicSettings {
+  bonus_payout_rate: string         // e.g. "0.40" — fraction of a bonus-spin gross paid out
+  bonus_to_ngn_rate: string         // bonus → NGN (1:1 in MVP)
+  bonus_to_usdt_rate: string        // bonus → USDT (1:1 in MVP)
+  ngn_per_usd_display_rate: string  // display-only NGN/USD comparison rate
   min_deposit_ngn: string
   min_deposit_usd: string
-  coins_per_ngn: string
-  coins_per_usd: string
-  ngn_per_usd_display_rate: string
-  bonus_wallet_payout_rate: string  // e.g. "0.40" → 40% of bonus spin win goes to earnings
+  min_withdrawal_ngn: string
+  min_withdrawal_usdt: string
+  crypto_withdrawal_enabled: boolean
 }
 
 // Spin — Wheels
@@ -81,6 +95,11 @@ export interface WheelRecord {
 // Spin — Result
 export type SpinOutcomeType = 'win' | 'loss' | 'push' | 'partial_loss'
 
+/** Spendable bucket a spin is staked from */
+export type SpinSource = 'crypto_coins' | 'naira_coins' | 'bonus_coins'
+/** Where a bonus-spin win lands (chosen at spin time) */
+export type BonusDestination = 'crypto' | 'naira'
+
 export interface SpinResult {
   id: string
   wheel: WheelRecord
@@ -90,24 +109,33 @@ export interface SpinResult {
   /** User-visible label e.g. "3×", "Loss", "₦1000" */
   segment_label: string
   multiplier: string
-  /** Final NGN payout — already calculated */
+  /** Gross wheel payout (before the bonus haircut for bonus spins) */
   payout_amount: string
+  /** Actual amount credited to the withdraw balance (esp. for bonus spins). May be absent on older responses. */
+  net_credited?: string
+  /** Currency of the payout — '' on a loss */
+  payout_currency?: 'NGN' | 'USDT' | ''
+  /** Which withdraw balance was credited — '' on a loss */
+  credited_balance?: 'naira_withdraw' | 'crypto_withdraw' | ''
   /** Drive celebration UI from this, not multiplier */
   outcome: SpinOutcomeType
   /** Which coin wallet was used for this spin */
-  source_wallet: 'deposit_coins' | 'bonus_coins'
+  source_wallet: SpinSource
+  /** For bonus spins only */
+  bonus_destination?: BonusDestination | ''
   segment_landed?: { label: string; multiplier: string }
-  server_seed_hash: string
-  client_seed: string | null
-  nonce: number
-  is_welcome_spin: boolean
+  server_seed_hash?: string
+  client_seed?: string | null
+  nonce?: number
+  is_welcome_spin?: boolean
   created_at: string
 }
 
 export interface SpinRequest {
   wheel_id: string
-  stake_amount: string                              // string decimal e.g. "500.00"
-  source_wallet: 'deposit_coins' | 'bonus_coins'   // required — which balance to stake from
+  stake_amount: string            // string decimal e.g. "500.00"
+  source_wallet: SpinSource       // required — which balance to stake from
+  bonus_destination?: BonusDestination  // required iff source_wallet === 'bonus_coins'
   client_seed?: string
 }
 
@@ -141,7 +169,7 @@ export interface DepositRecord {
 
 export interface DepositRequest {
   provider: 'paystack' | 'nowpayments'
-  amount: number              // NGN for paystack, USD for nowpayments
+  amount: string              // decimal string — NGN for paystack, USD for nowpayments
   pay_currency?: string       // required for nowpayments e.g. "btc", "usdt"
 }
 
@@ -160,17 +188,22 @@ export interface PaginatedResponse<T> {
 }
 
 // Transactions (unified feed from /wallet/transactions/)
+export type TransactionBalanceType =
+  | 'naira_coins' | 'crypto_coins' | 'bonus_coins'
+  | 'naira_withdraw' | 'crypto_withdraw' | 'staked'
+
 export interface TransactionRecord {
   id: string
-  type: 'deposit' | 'win' | 'withdrawal' | 'spin_win' | 'spin_stake' | 'referral_bonus' | string
-  balance_type: 'deposit_coins' | 'bonus_coins' | 'earnings' | 'staked' | string
-  description: string
+  type: 'deposit' | 'withdrawal' | 'win' | 'lock' | 'forfeit' | 'refund' | 'bonus' | 'spin_win' | 'spin_stake' | 'referral_bonus' | string
+  balance_type: TransactionBalanceType | string
+  currency?: 'NGN' | 'USDT' | string
+  description?: string
   amount: string          // positive = credit, negative = debit
-  balance_before: string
-  balance_after: string
-  reference_id: string | null
+  balance_before?: string
+  balance_after?: string
+  reference_id?: string | null
   status: 'pending' | 'completed' | 'failed'
-  metadata: Record<string, unknown> | null
+  metadata?: Record<string, unknown> | null
   created_at: string
 }
 
@@ -205,38 +238,45 @@ export interface WithdrawalBankAccount {
   verified_at: string
 }
 
+export type WithdrawalRail = 'bank' | 'crypto'
+
 export interface WithdrawalRecord {
   id: string
-  bank_account: WithdrawalBankAccount
+  rail: WithdrawalRail
+  currency: 'NGN' | 'USDT'
+  bank_account: WithdrawalBankAccount | null
+  wallet_address: string
+  network: string
+  tx_hash: string
   amount: string
   fee: string
   net_amount: string
   status: WithdrawalStatus
   reference: string
   requires_review: boolean
-  forced_manual_review: boolean
+  forced_manual_review?: boolean
   failure_reason: string
   requested_at: string
   completed_at: string | null
 }
 
-/** Payload for POST /withdrawals/ */
+/** Payload for POST /withdrawals/ — bank or crypto rail */
 export type WithdrawPayload =
-  | { amount: number; saved_account_id: string }
-  | { amount: number; bank_code: string; account_number: string }
+  | { rail: 'bank'; amount: string; saved_account_id: string }
+  | { rail: 'bank'; amount: string; bank_code: string; account_number: string }
+  | { rail: 'crypto'; amount: string; saved_wallet_id: string }
+  | { rail: 'crypto'; amount: string; wallet_address: string; network: 'TRC20' }
 
-export interface WithdrawalLimits {
-  min_withdrawal: string
-  max_per_transaction: string
-  max_daily_amount: string
-  max_daily_count: number
-  auto_payout_threshold: string
-  cash_balance: string
-  today_total: string
-  today_count: number
-  remaining_today_amount: string
-  remaining_today_count: number
-  kyc_approved: boolean
+// Saved TRC-20 crypto wallet (v3)
+export interface CryptoWallet {
+  id: string
+  network: string
+  address: string
+  address_masked: string
+  label: string
+  is_default: boolean
+  is_active: boolean
+  verified_at: string
 }
 
 // KYC
