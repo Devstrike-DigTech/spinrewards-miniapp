@@ -49,8 +49,61 @@
   z-index: 20;
   display: flex;
   flex-direction: column;
-  /* box-shadow applied here, transition applied inline */
   box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.6);
+  /* Collapsed into the FAB corner; expands out of it on open */
+  transform-origin: calc(100% - 42px) calc(100% - 110px);
+  transform: scale(0);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.22s ease;
+}
+.sheetOpen {
+  transform: scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Floating action button (opens the rewards sheet) ── */
+.fab {
+  position: absolute;
+  right: 16px;
+  bottom: 84px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e8b830, #c9a028 60%, #a87e14);
+  color: #0a0a1a;
+  font-size: 23px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 20px rgba(201, 160, 40, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  z-index: 16;
+  animation: fabIn 0.2s ease;
+}
+.fab:active { transform: scale(0.92); }
+@keyframes fabIn { from { transform: scale(0); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+.fabDot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #e8533d;
+  border: 2px solid #0a0a1a;
+}
+
+/* Close button in the sheet header */
+.sheetClose {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #141e35;
+  border: 1px solid #1e2d4d;
+  color: #a0a0c0;
+  font-size: 13px;
 }
 
 /* ── Peek area (handle + summary row) ── */
