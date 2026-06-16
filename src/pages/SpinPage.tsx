@@ -7,6 +7,7 @@ import { FundWalletModal } from '@/components/FundWalletModal/FundWalletModal'
 import { useMiniToast } from '@/components/MiniToast/MiniToast'
 import { spin as spinApi, wallet, kyc as kycApi, challenges as challengesApi } from '@/api/endpoints'
 import { useWalletStore } from '@/store/walletStore'
+import { useSettingsStore, bonusPayoutLabel } from '@/store/settingsStore'
 import { useTelegram } from '@/hooks/useTelegram'
 import { sounds } from '@/lib/sounds'
 import { getWheelVisualConfig, deriveStakePresets, segmentsFromApi } from '@/lib/wheelConfig'
@@ -108,8 +109,10 @@ export function SpinPage() {
   const navigate = useNavigate()
   const { haptic } = useTelegram()
   const { cryptoCoins, nairaCoins, bonusCoins, setBalance } = useWalletStore()
+  const settings = useSettingsStore((s) => s.settings)
   const [sourceWallet, setSourceWallet] = useState<SpinSource>('naira_coins')
   const [bonusDestination, setBonusDestination] = useState<BonusDestination>('naira')
+  const [showBonusDest, setShowBonusDest] = useState(false)
   const toast = useMiniToast()
 
   // All active wheels — used to derive stake presets
@@ -679,7 +682,7 @@ export function SpinPage() {
                 </button>
                 <button
                   className={`${styles.walletPickerOption} ${sourceWallet === 'bonus_coins' ? styles.walletPickerSelected : ''}`}
-                  onClick={() => setSourceWallet('bonus_coins')}
+                  onClick={() => { setSourceWallet('bonus_coins'); setShowBonusDest(true) }}
                   disabled={bonusNum <= 0}
                 >
                   <span className={styles.walletPickerIcon}>🎁</span>
@@ -690,23 +693,12 @@ export function SpinPage() {
               </div>
             )}
 
-            {/* ── Bonus destination (only for bonus spins) ── */}
+            {/* ── Bonus destination summary (tap to change — full picker is a modal) ── */}
             {phase === 'idle' && sourceWallet === 'bonus_coins' && (
-              <div className={styles.destRow}>
-                <span className={styles.destLabel}>Win goes to</span>
-                <button
-                  className={`${styles.destOption} ${bonusDestination === 'naira' ? styles.destSelected : ''}`}
-                  onClick={() => setBonusDestination('naira')}
-                >
-                  ₦ Naira
-                </button>
-                <button
-                  className={`${styles.destOption} ${bonusDestination === 'crypto' ? styles.destSelected : ''}`}
-                  onClick={() => setBonusDestination('crypto')}
-                >
-                  $ Crypto
-                </button>
-              </div>
+              <button className={styles.destSummary} onClick={() => setShowBonusDest(true)}>
+                🎁 Winnings → <strong>{bonusDestination === 'crypto' ? '$ Crypto' : '₦ Naira'}</strong>
+                <span className={styles.destSummaryChange}>Change</span>
+              </button>
             )}
 
             {/* ── Stake section ── */}
@@ -871,6 +863,39 @@ export function SpinPage() {
           onClose={() => setShowFund(false)}
           onSuccess={handleFundSuccess}
         />
+      )}
+
+      {/* ── Bonus destination dialog ── */}
+      {showBonusDest && (
+        <div
+          className={styles.modalOverlay}
+          onClick={(e) => e.target === e.currentTarget && setShowBonusDest(false)}
+        >
+          <div className={styles.modalCard}>
+            <p className={styles.modalTitle}>Where should your winnings go?</p>
+            <p className={styles.modalSub}>
+              Bonus spins pay out {bonusPayoutLabel(settings)} of the win. Choose the balance it lands in.
+            </p>
+            <div className={styles.modalChoices}>
+              <button
+                className={`${styles.modalChoice} ${bonusDestination === 'naira' ? styles.modalChoiceSel : ''}`}
+                onClick={() => { setBonusDestination('naira'); setShowBonusDest(false) }}
+              >
+                <span className={styles.modalChoiceIcon}>₦</span>
+                <span className={styles.modalChoiceName}>Naira balance</span>
+                <span className={styles.modalChoiceHint}>Withdraw to bank</span>
+              </button>
+              <button
+                className={`${styles.modalChoice} ${bonusDestination === 'crypto' ? styles.modalChoiceSel : ''}`}
+                onClick={() => { setBonusDestination('crypto'); setShowBonusDest(false) }}
+              >
+                <span className={styles.modalChoiceIcon}>$</span>
+                <span className={styles.modalChoiceName}>Crypto balance</span>
+                <span className={styles.modalChoiceHint}>Withdraw to wallet</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <toast.View />
